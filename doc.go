@@ -21,11 +21,11 @@
 // there's none at the path. Another way is to create an empty document
 // with
 //
-//	doc := gjp.NewDocument("/")
+//	doc := gjp.NewDocument("::")
 //
 // Here and at parsed documents values can be set with
 //
-//	err := doc.SetValueAt("a/b/3/c", 4711)
+//	err := doc.SetValueAt("a::b::3::c", 4711)
 //
 // Additionally values of the document can be processed using
 //
