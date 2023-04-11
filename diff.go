@@ -72,20 +72,20 @@ func (d *Diff) Differences() []string {
 
 // DifferenceAt returns the differences at the given path by
 // returning the first and the second value.
-func (d *Diff) DifferenceAt(path string) (*Value, *Value) {
-	firstValue := d.first.ValueAt(path)
-	secondValue := d.second.ValueAt(path)
-	return firstValue, secondValue
+func (d *Diff) DifferenceAt(path string) (*PathValue, *PathValue) {
+	fstPV := d.first.ValueAt(path)
+	sndPV := d.second.ValueAt(path)
+	return fstPV, sndPV
 }
 
 // compare iterates over the both documents looking for different
 // values or even paths.
 func (d *Diff) compare() error {
 	firstPaths := map[string]struct{}{}
-	firstProcessor := func(path string, value *Value) error {
-		firstPaths[path] = struct{}{}
-		if !value.Equals(d.second.ValueAt(path)) {
-			d.paths = append(d.paths, path)
+	firstProcessor := func(pv *PathValue) error {
+		firstPaths[pv.Path] = struct{}{}
+		if !pv.Equals(d.second.ValueAt(pv.Path)) {
+			d.paths = append(d.paths, pv.Path)
 		}
 		return nil
 	}
@@ -93,13 +93,13 @@ func (d *Diff) compare() error {
 	if err != nil {
 		return err
 	}
-	secondProcessor := func(path string, value *Value) error {
-		_, ok := firstPaths[path]
+	secondProcessor := func(pv *PathValue) error {
+		_, ok := firstPaths[pv.Path]
 		if ok {
 			// Been there, done that.
 			return nil
 		}
-		d.paths = append(d.paths, path)
+		d.paths = append(d.paths, pv.Path)
 		return nil
 	}
 	return d.second.Process(secondProcessor)

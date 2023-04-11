@@ -18,26 +18,45 @@ import (
 )
 
 //--------------------
-// VALUE
+// PATH VALUE
 //--------------------
 
-// Value contains one JSON value.
-type Value struct {
-	raw any
-	err error
+// ValueProcessor describes a function for the processing of
+// values while iterating over a document.
+type ValueProcessor func(pv *PathValue) error
+
+// PathValue is the combination of path, separator and value.
+type PathValue struct {
+	Path      string
+	Separator string
+	Value     Value
 }
 
 // IsUndefined returns true if this value is undefined.
-func (v *Value) IsUndefined() bool {
-	return v.raw == nil
+func (pv *PathValue) IsUndefined() bool {
+	return pv.Value == nil || pv.IsError()
+}
+
+// IsError returns true if this value is an error.
+func (pv *PathValue) IsError() bool {
+	_, ok := pv.Value.(error)
+	return ok
+}
+
+// AsError returns the error value in case of an error.
+func (pv *PathValue) AsError() error {
+	if pv.IsError() {
+		return pv.Value.(error)
+	}
+	return nil
 }
 
 // AsString returns the value as string.
-func (v *Value) AsString(dv string) string {
-	if v.IsUndefined() {
+func (pv *PathValue) AsString(dv string) string {
+	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := v.raw.(type) {
+	switch tv := pv.Value.(type) {
 	case string:
 		return tv
 	case int:
@@ -51,11 +70,11 @@ func (v *Value) AsString(dv string) string {
 }
 
 // AsInt returns the value as int.
-func (v *Value) AsInt(dv int) int {
-	if v.IsUndefined() {
+func (pv *PathValue) AsInt(dv int) int {
+	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := v.raw.(type) {
+	switch tv := pv.Value.(type) {
 	case string:
 		i, err := strconv.Atoi(tv)
 		if err != nil {
@@ -76,11 +95,11 @@ func (v *Value) AsInt(dv int) int {
 }
 
 // AsFloat64 returns the value as float64.
-func (v *Value) AsFloat64(dv float64) float64 {
-	if v.IsUndefined() {
+func (pv *PathValue) AsFloat64(dv float64) float64 {
+	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := v.raw.(type) {
+	switch tv := pv.Value.(type) {
 	case string:
 		f, err := strconv.ParseFloat(tv, 64)
 		if err != nil {
@@ -101,11 +120,11 @@ func (v *Value) AsFloat64(dv float64) float64 {
 }
 
 // AsBool returns the value as bool.
-func (v *Value) AsBool(dv bool) bool {
-	if v.IsUndefined() {
+func (pv *PathValue) AsBool(dv bool) bool {
+	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := v.raw.(type) {
+	switch tv := pv.Value.(type) {
 	case string:
 		b, err := strconv.ParseBool(tv)
 		if err != nil {
@@ -123,16 +142,36 @@ func (v *Value) AsBool(dv bool) bool {
 }
 
 // Equals compares a value with the passed one.
-func (v *Value) Equals(to *Value) bool {
-	return reflect.DeepEqual(v.raw, to.raw)
+func (pv *PathValue) Equals(to *PathValue) bool {
+	switch {
+	case pv.IsUndefined() && to.IsUndefined():
+		return true
+	case pv.IsUndefined() || to.IsUndefined():
+		return false
+	default:
+		return reflect.DeepEqual(pv.Value, to.Value)
+	}
+}
+
+// Process processes the value with the passed processor.
+func (pv *PathValue) Process(process ValueProcessor) error {
+	return process(pv)
+}
+
+// SplitPath splits the path into its parts.
+func (pv *PathValue) SplitPath() []string {
+	return splitPath(pv.Path, pv.Separator)
 }
 
 // String implements fmt.Stringer.
-func (v *Value) String() string {
-	if v.IsUndefined() {
+func (pv *PathValue) String() string {
+	if pv.IsUndefined() {
 		return "null"
 	}
-	return fmt.Sprintf("%v", v.raw)
+	return fmt.Sprintf("%v", pv.Value)
 }
+
+// PathValues contains a list of paths and their values.
+type PathValues []PathValue
 
 // EOF
