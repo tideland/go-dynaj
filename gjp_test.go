@@ -79,9 +79,9 @@ func TestProcessing(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 	count := 0
-	processor := func(path string, value *gjp.Value) error {
+	processor := func(pv *gjp.PathValue) error {
 		count++
-		assert.Logf("path %02d  =>  %-10q = %q", count, path, value.AsString("<undefined>"))
+		assert.Logf("path %02d  =>  %-10q = %q", count, pv.Path, pv.AsString("<undefined>"))
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func TestProcessing(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(count, 27)
 
-	processor = func(path string, value *gjp.Value) error {
+	processor = func(pv *gjp.PathValue) error {
 		return errors.New("ouch")
 	}
 	err = doc.Process(processor)
@@ -126,8 +126,21 @@ func TestSeparator(t *testing.T) {
 	assert.Equal(sv, lo.B[1].D.A)
 
 	// Check if is undefined.
-	v := doc.ValueAt("you-wont-find-me")
-	assert.True(v.IsUndefined())
+	pv := doc.ValueAt("you-wont-find-me")
+	assert.True(pv.IsUndefined())
+	assert.True(pv.IsError())
+	assert.ErrorContains(pv.AsError(), `cannot get value at "you-wont-find-me"`)
+}
+
+// TestString verifies the string representation of a document.
+func TestString(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+	bs, _ := createDocument(assert)
+
+	doc, err := gjp.Parse(bs, "/")
+	assert.Nil(err)
+	s := doc.String()
+	assert.Equal(s, string(bs))
 }
 
 // TestCompare tests comparing two documents.
@@ -196,8 +209,8 @@ func TestCompare(t *testing.T) {
 	assert.Length(diff.Differences(), 4)
 }
 
-// TestString tests retrieving values as strings.
-func TestString(t *testing.T) {
+// TestAsString tests retrieving values as strings.
+func TestAsString(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
@@ -220,8 +233,8 @@ func TestString(t *testing.T) {
 	assert.Equal(sv, "null")
 }
 
-// TestInt tests retrieving values as ints.
-func TestInt(t *testing.T) {
+// TestAsInt tests retrieving values as ints.
+func TestAsInt(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
@@ -241,8 +254,8 @@ func TestInt(t *testing.T) {
 	assert.Equal(iv, -1)
 }
 
-// TestFloat64 tests retrieving values as float64.
-func TestFloat64(t *testing.T) {
+// TestAsFloat64 tests retrieving values as float64.
+func TestAsFloat64(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
@@ -264,8 +277,8 @@ func TestFloat64(t *testing.T) {
 	assert.Equal(fv, -1.0)
 }
 
-// TestBool tests retrieving values as bool.
-func TestBool(t *testing.T) {
+// TestAsBool tests retrieving values as bool.
+func TestAsBool(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
@@ -320,7 +333,7 @@ func TestQuery(t *testing.T) {
 	pvs, err = doc.Query("/A")
 	assert.Nil(err)
 	assert.Equal(pvs[0].Path, "/A")
-	assert.Equal(pvs[0].Value.AsString(""), "Level One")
+	assert.Equal(pvs[0].AsString(""), "Level One")
 }
 
 // TestBuilding tests the creation of documents.
@@ -368,8 +381,12 @@ func TestBuilding(t *testing.T) {
 	assert.ErrorMatch(err, ".*corrupt.*")
 	err = doc.SetValueAt("a/b/x/y", "stupid")
 	assert.ErrorMatch(err, ".*corrupt.*")
+	err = doc.SetValueAt("/a/d/x", "stupid")
+	assert.ErrorMatch(err, ".*invalid index.*")
+	err = doc.SetValueAt("/a/d/-1", "stupid")
+	assert.ErrorMatch(err, ".*negative index.*")
 
-	// Legally change values.
+	// Legal change of values.
 	err = doc.SetValueAt("/a/b/x", 2)
 	assert.Nil(err)
 	iv = doc.ValueAt("a/b/x").AsInt(0)
