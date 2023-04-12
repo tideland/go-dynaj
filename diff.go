@@ -20,11 +20,11 @@ type Diff struct {
 
 // Compare parses and compares the documents and returns their differences.
 func Compare(first, second []byte) (*Diff, error) {
-	fd, err := Parse(first)
+	fd, err := Unmarshal(first)
 	if err != nil {
 		return nil, err
 	}
-	sd, err := Parse(second)
+	sd, err := Unmarshal(second)
 	if err != nil {
 		return nil, err
 	}

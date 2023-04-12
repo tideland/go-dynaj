@@ -28,9 +28,9 @@ type Document struct {
 	root Node
 }
 
-// Parse reads a raw document and returns it as
-// accessible document.
-func Parse(data []byte) (*Document, error) {
+// Unmarshal parses the JSON-encoded data and stores the result
+// as new document.
+func Unmarshal(data []byte) (*Document, error) {
 	var root any
 	err := json.Unmarshal(data, &root)
 	if err != nil {
