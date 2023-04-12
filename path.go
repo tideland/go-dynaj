@@ -22,9 +22,8 @@ import (
 //--------------------
 
 // splitPath splits and cleans the path into parts.
-func splitPath(path, separator string) []string {
-	// Split the path by the separator.
-	parts := strings.Split(path, separator)
+func splitPath(path string) []string {
+	parts := strings.Split(path, Separator)
 	out := []string{}
 	for _, part := range parts {
 		if part != "" {
@@ -34,15 +33,15 @@ func splitPath(path, separator string) []string {
 	return out
 }
 
-// ht retrieves head and tail from parts.
-func ht(parts []string) (string, []string) {
-	switch len(parts) {
+// ht retrieves head and tail from a list of keys.
+func ht(keys []string) (string, []string) {
+	switch len(keys) {
 	case 0:
 		return "", []string{}
 	case 1:
-		return parts[0], []string{}
+		return keys[0], []string{}
 	default:
-		return parts[0], parts[1:]
+		return keys[0], keys[1:]
 	}
 }
 
@@ -67,13 +66,13 @@ func isValue(node Node) bool {
 }
 
 // valueAt returns the value at the given path.
-func valueAt(node Node, path []string) (Node, error) {
-	if len(path) == 0 {
+func valueAt(node Node, keys []string) (Node, error) {
+	if len(keys) == 0 {
 		// End of the path.
 		return node, nil
 	}
 	// Further access depends on part content node and type.
-	h, t := ht(path)
+	h, t := ht(keys)
 	if h == "" {
 		return node, nil
 	}
@@ -82,14 +81,14 @@ func valueAt(node Node, path []string) (Node, error) {
 		// JSON object.
 		field, ok := n[h]
 		if !ok {
-			return nil, fmt.Errorf("invalid path %q", path)
+			return nil, fmt.Errorf("invalid path %q", pathify(keys))
 		}
 		return valueAt(field, t)
 	case Array:
 		// JSON array.
 		index, err := strconv.Atoi(h)
 		if err != nil || index >= len(n) {
-			return nil, fmt.Errorf("invalid path %q: %v", h, err)
+			return nil, fmt.Errorf("invalid path %q: %v", pathify(keys), err)
 		}
 		return valueAt(n[index], t)
 	}
@@ -97,56 +96,51 @@ func valueAt(node Node, path []string) (Node, error) {
 	return nil, fmt.Errorf("path is too long")
 }
 
-// pathify creates a path out of parts and separator.
-func pathify(parts []string, separator string) string {
-	return separator + strings.Join(parts, separator)
+// pathify creates a path out of keys.
+func pathify(parts []string) string {
+	return Separator + strings.Join(parts, Separator)
 }
 
 // process processes node recursively.
-func process(node any, parts []string, separator string, processor ValueProcessor) error {
+func process(node any, keys []string, processor ValueProcessor) error {
 	mkerr := func(err error, ps []string) error {
-		return fmt.Errorf("cannot process '%s': %v", pathify(ps, separator), err)
+		return fmt.Errorf("cannot process '%s': %v", pathify(ps), err)
 	}
 
-	switch n := node.(type) {
-	case map[string]any:
+	switch tnode := node.(type) {
+	case Object:
 		// A JSON object.
-		if len(n) == 0 {
+		if len(tnode) == 0 {
 			return (&PathValue{
-				Path:      pathify(parts, separator),
-				Separator: separator,
+				path: pathify(keys),
 			}).Process(processor)
 		}
-		for field, subnode := range n {
-			fieldparts := append(parts, field)
-			if err := process(subnode, fieldparts, separator, processor); err != nil {
-				return mkerr(err, parts)
+		for key, subnode := range tnode {
+			objectKeys := append(keys, key)
+			if err := process(subnode, objectKeys, processor); err != nil {
+				return mkerr(err, keys)
 			}
 		}
-	case []any:
+	case Array:
 		// A JSON array.
-		if len(n) == 0 {
+		if len(tnode) == 0 {
 			return (&PathValue{
-				Path:      pathify(parts, separator),
-				Separator: separator,
+				path: pathify(keys),
 			}).Process(processor)
 		}
-		for index, subnode := range n {
-			indexparts := append(parts, strconv.Itoa(index))
-			if err := process(subnode, indexparts, separator, processor); err != nil {
-				return mkerr(err, parts)
+		for index, subnode := range tnode {
+			arrayKeys := append(keys, strconv.Itoa(index))
+			if err := process(subnode, arrayKeys, processor); err != nil {
+				return mkerr(err, keys)
 			}
 		}
 	default:
 		// A single value at the end.
-		pv := &PathValue{
-			Path:      pathify(parts, separator),
-			Separator: separator,
-			Value:     n,
-		}
-		return pv.Process(processor)
+		return (&PathValue{
+			path: pathify(keys),
+			node: tnode,
+		}).Process(processor)
 	}
-
 	return nil
 }
 
