@@ -25,30 +25,26 @@ import (
 // values while iterating over a document.
 type ValueProcessor func(pv *PathValue) error
 
-// PathValue is the combination of path, separator and value.
+// PathValue is the combination of path and its node value.
 type PathValue struct {
-	Path      string
-	Separator string
-	Value     Value
+	path string
+	node Node
+	err  error
 }
 
 // IsUndefined returns true if this value is undefined.
 func (pv *PathValue) IsUndefined() bool {
-	return pv.Value == nil || pv.IsError()
+	return pv.node == nil && pv.err == nil
 }
 
 // IsError returns true if this value is an error.
 func (pv *PathValue) IsError() bool {
-	_, ok := pv.Value.(error)
-	return ok
+	return pv.err != nil
 }
 
-// AsError returns the error value in case of an error.
-func (pv *PathValue) AsError() error {
-	if pv.IsError() {
-		return pv.Value.(error)
-	}
-	return nil
+// Err returns the error if there is one.
+func (pv *PathValue) Err() error {
+	return pv.err
 }
 
 // AsString returns the value as string.
@@ -56,7 +52,7 @@ func (pv *PathValue) AsString(dv string) string {
 	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := pv.Value.(type) {
+	switch tv := pv.node.(type) {
 	case string:
 		return tv
 	case int:
@@ -74,7 +70,7 @@ func (pv *PathValue) AsInt(dv int) int {
 	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := pv.Value.(type) {
+	switch tv := pv.node.(type) {
 	case string:
 		i, err := strconv.Atoi(tv)
 		if err != nil {
@@ -99,7 +95,7 @@ func (pv *PathValue) AsFloat64(dv float64) float64 {
 	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := pv.Value.(type) {
+	switch tv := pv.node.(type) {
 	case string:
 		f, err := strconv.ParseFloat(tv, 64)
 		if err != nil {
@@ -124,7 +120,7 @@ func (pv *PathValue) AsBool(dv bool) bool {
 	if pv.IsUndefined() {
 		return dv
 	}
-	switch tv := pv.Value.(type) {
+	switch tv := pv.node.(type) {
 	case string:
 		b, err := strconv.ParseBool(tv)
 		if err != nil {
@@ -149,7 +145,7 @@ func (pv *PathValue) Equals(to *PathValue) bool {
 	case pv.IsUndefined() || to.IsUndefined():
 		return false
 	default:
-		return reflect.DeepEqual(pv.Value, to.Value)
+		return reflect.DeepEqual(pv.node, to.node)
 	}
 }
 
@@ -158,9 +154,14 @@ func (pv *PathValue) Process(process ValueProcessor) error {
 	return process(pv)
 }
 
-// SplitPath splits the path into its parts.
+// Path returns the path of the value.
+func (pv *PathValue) Path() string {
+	return pv.path
+}
+
+// SplitPath splits the path into its keys.
 func (pv *PathValue) SplitPath() []string {
-	return splitPath(pv.Path, pv.Separator)
+	return splitPath(pv.path)
 }
 
 // String implements fmt.Stringer.
@@ -168,10 +169,13 @@ func (pv *PathValue) String() string {
 	if pv.IsUndefined() {
 		return "null"
 	}
-	return fmt.Sprintf("%v", pv.Value)
+	if pv.IsError() {
+		return fmt.Sprintf("error: %v", pv.err)
+	}
+	return fmt.Sprintf("%v", pv.node)
 }
 
 // PathValues contains a list of paths and their values.
-type PathValues []PathValue
+type PathValues []*PathValue
 
 // EOF

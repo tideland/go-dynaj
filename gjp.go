@@ -12,6 +12,15 @@ package gjp // import "tideland.dev/go/gjp"
 //--------------------
 
 //--------------------
+// CONSTANTS
+//--------------------
+
+const (
+	// Separator is the default separator for paths.
+	Separator = "/"
+)
+
+//--------------------
 // TYPES
 //--------------------
 

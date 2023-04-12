@@ -25,34 +25,30 @@ import (
 
 // Document represents one JSON document.
 type Document struct {
-	separator string
-	root      any
+	root Node
 }
 
 // Parse reads a raw document and returns it as
 // accessible document.
-func Parse(data []byte, separator string) (*Document, error) {
+func Parse(data []byte) (*Document, error) {
 	var root any
 	err := json.Unmarshal(data, &root)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal document: %v", err)
 	}
 	return &Document{
-		separator: separator,
-		root:      root,
+		root: root,
 	}, nil
 }
 
 // NewDocument creates a new empty document.
-func NewDocument(separator string) *Document {
-	return &Document{
-		separator: separator,
-	}
+func NewDocument() *Document {
+	return &Document{}
 }
 
 // Length returns the number of elements for the given path.
 func (d *Document) Length(path string) int {
-	node, err := valueAt(d.root, splitPath(path, d.separator))
+	node, err := valueAt(d.root, splitPath(path))
 	if err != nil {
 		return -1
 	}
@@ -69,8 +65,8 @@ func (d *Document) Length(path string) int {
 
 // SetValueAt sets the value at the given path.
 func (d *Document) SetValueAt(path string, value Value) error {
-	pathParts := splitPath(path, d.separator)
-	root, err := insertValueInNode(d.root, pathParts, value)
+	keys := splitPath(path)
+	root, err := insertValueInNode(d.root, keys, value)
 	if err != nil {
 		return err
 	}
@@ -81,14 +77,13 @@ func (d *Document) SetValueAt(path string, value Value) error {
 // ValueAt returns the addressed value.
 func (d *Document) ValueAt(path string) *PathValue {
 	pv := &PathValue{
-		Path:      path,
-		Separator: d.separator,
+		path: path,
 	}
-	n, err := valueAt(d.root, splitPath(path, d.separator))
+	node, err := valueAt(d.root, splitPath(path))
 	if err != nil {
-		pv.Value = fmt.Errorf("cannot get value at %q: %v", path, err)
+		pv.err = fmt.Errorf("cannot find value at %q: %v", path, err)
 	} else {
-		pv.Value = n
+		pv.node = node
 	}
 	return pv
 }
@@ -102,11 +97,10 @@ func (d *Document) Clear() {
 func (d *Document) Query(pattern string) (PathValues, error) {
 	pvs := PathValues{}
 	err := d.Process(func(pv *PathValue) error {
-		if matcher.Matches(pattern, pv.Path, false) {
-			pvs = append(pvs, PathValue{
-				Path:      pv.Path,
-				Separator: pv.Separator,
-				Value:     pv.Value,
+		if matcher.Matches(pattern, pv.path, false) {
+			pvs = append(pvs, &PathValue{
+				path: pv.path,
+				node: pv.node,
 			})
 		}
 		return nil
@@ -118,7 +112,7 @@ func (d *Document) Query(pattern string) (PathValues, error) {
 // There's no order, so nesting into an embedded document or
 // list may come earlier than higher level paths.
 func (d *Document) Process(processor ValueProcessor) error {
-	return process(d.root, []string{}, d.separator, processor)
+	return process(d.root, []string{}, processor)
 }
 
 // MarshalJSON implements json.Marshaler.
@@ -139,46 +133,43 @@ func (d *Document) String() string {
 // DOCUMENT HELPERS
 //--------------------
 
-// insertValue recursively inserts a value at a given path.
-func insertValueInNode(node Node, path []string, value Value) (Node, error) {
-	if len(path) == 0 {
-		// return nil, fmt.Errorf("path cannot be empty")
+// insertValue recursively inserts a value at the end of the keys list.
+func insertValueInNode(node Node, keys []string, value Value) (Node, error) {
+	if len(keys) == 0 {
 		return value, nil
 	}
 
 	switch tnode := node.(type) {
 	case nil:
-		return createValue(path, value)
+		return createValue(keys, value)
 	case Object:
-		return insertValueInObject(tnode, path, value)
+		return insertValueInObject(tnode, keys, value)
 	case Array:
-		return insertValueInArray(tnode, path, value)
+		return insertValueInArray(tnode, keys, value)
 	default:
 		return nil, fmt.Errorf("document is not a valid JSON structure")
 	}
 }
 
-// createValue creates a value at a given path.
-func createValue(path []string, value Value) (Node, error) {
-	h, t := ht(path)
-	// Create object if last element in path.
-	if len(t) == 0 {
-		return Object{h: value}, nil
+// createValue creates a value at the end of the keys list.
+func createValue(keys []string, value Value) (Node, error) {
+	// Check if we are at the end of the keys list.
+	if len(keys) == 0 {
+		return value, nil
 	}
-	// Create array if path head is an index.
+	h, t := ht(keys)
+	// Check for array index first.
 	index, err := strconv.Atoi(h)
-	switch {
-	case err == nil:
+	if err == nil {
+		// It's an array index.
 		arr := make([]any, index+1)
 		arr[index], err = createValue(t, value)
 		if err != nil {
 			return nil, err
 		}
 		return arr, nil
-	case err != nil && len(t) == 0:
-		return Object{h: value}, nil
 	}
-	// Create object.
+	// It's an object key.
 	obj := Object{h: nil}
 	obj[h], err = createValue(t, value)
 	if err != nil {
@@ -187,13 +178,13 @@ func createValue(path []string, value Value) (Node, error) {
 	return obj, nil
 }
 
-// insertValueInObject inserts a value in a JSON object at a given path.
-func insertValueInObject(obj Object, path []string, value Value) (Node, error) {
-	h, t := ht(path)
-	// Insert value if last element in path.
+// insertValueInObject inserts a value in a JSON object at the end of the keys list.
+func insertValueInObject(obj Object, keys []string, value Value) (Node, error) {
+	h, t := ht(keys)
+	// Create object if keys list has only one element.
 	if len(t) == 0 {
 		if isObjectOrArray(obj[h]) {
-			return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", path)
+			return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", keys)
 		}
 		obj[h] = value
 		return obj, nil
@@ -201,7 +192,7 @@ func insertValueInObject(obj Object, path []string, value Value) (Node, error) {
 	// Insert value in node.
 	node := obj[h]
 	if isValue(node) {
-		return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", path)
+		return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", keys)
 	}
 	newNode, err := insertValueInNode(node, t, value)
 	if err != nil {

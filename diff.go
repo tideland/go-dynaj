@@ -19,12 +19,12 @@ type Diff struct {
 }
 
 // Compare parses and compares the documents and returns their differences.
-func Compare(first, second []byte, separator string) (*Diff, error) {
-	fd, err := Parse(first, separator)
+func Compare(first, second []byte) (*Diff, error) {
+	fd, err := Parse(first)
 	if err != nil {
 		return nil, err
 	}
-	sd, err := Parse(second, separator)
+	sd, err := Parse(second)
 	if err != nil {
 		return nil, err
 	}
@@ -40,9 +40,7 @@ func Compare(first, second []byte, separator string) (*Diff, error) {
 }
 
 // CompareDocuments compares the documents and returns their differences.
-func CompareDocuments(first, second *Document, separator string) (*Diff, error) {
-	first.separator = separator
-	second.separator = separator
+func CompareDocuments(first, second *Document) (*Diff, error) {
 	d := &Diff{
 		first:  first,
 		second: second,
@@ -83,9 +81,9 @@ func (d *Diff) DifferenceAt(path string) (*PathValue, *PathValue) {
 func (d *Diff) compare() error {
 	firstPaths := map[string]struct{}{}
 	firstProcessor := func(pv *PathValue) error {
-		firstPaths[pv.Path] = struct{}{}
-		if !pv.Equals(d.second.ValueAt(pv.Path)) {
-			d.paths = append(d.paths, pv.Path)
+		firstPaths[pv.path] = struct{}{}
+		if !pv.Equals(d.second.ValueAt(pv.path)) {
+			d.paths = append(d.paths, pv.path)
 		}
 		return nil
 	}
@@ -94,12 +92,12 @@ func (d *Diff) compare() error {
 		return err
 	}
 	secondProcessor := func(pv *PathValue) error {
-		_, ok := firstPaths[pv.Path]
+		_, ok := firstPaths[pv.path]
 		if ok {
 			// Been there, done that.
 			return nil
 		}
-		d.paths = append(d.paths, pv.Path)
+		d.paths = append(d.paths, pv.path)
 		return nil
 	}
 	return d.second.Process(secondProcessor)
