@@ -32,7 +32,7 @@ func TestParseError(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs := []byte(`abc{def`)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(doc)
 	assert.ErrorMatch(err, `.*cannot unmarshal document.*`)
 }
@@ -42,7 +42,7 @@ func TestClear(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	doc.Clear()
 	err = doc.SetValueAt("/", "foo")
@@ -56,7 +56,7 @@ func TestLength(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	l := doc.Length("X")
 	assert.Equal(l, -1)
@@ -85,7 +85,7 @@ func TestProcessing(t *testing.T) {
 		return nil
 	}
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	err = doc.Process(processor)
 	assert.Nil(err)
@@ -103,7 +103,7 @@ func TestNotFound(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 
 	// Check if is undefined.
@@ -118,7 +118,7 @@ func TestString(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	s := doc.String()
 	assert.Equal(s, string(bs))
@@ -129,9 +129,9 @@ func TestCompare(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	first, _ := createDocument(assert)
 	second := createCompareDocument(assert)
-	firstDoc, err := gjp.Parse(first)
+	firstDoc, err := gjp.Unmarshal(first)
 	assert.Nil(err)
-	secondDoc, err := gjp.Parse(second)
+	secondDoc, err := gjp.Unmarshal(second)
 	assert.Nil(err)
 
 	diff, err := gjp.Compare(first, first)
@@ -165,7 +165,7 @@ func TestCompare(t *testing.T) {
 	first = []byte(`{}`)
 	second = []byte(`{"a":[],"b":{},"c":null}`)
 
-	sdocParsed, err := gjp.Parse(second)
+	sdocParsed, err := gjp.Unmarshal(second)
 	assert.Nil(err)
 	sdocMarshalled, err := sdocParsed.MarshalJSON()
 	assert.Nil(err)
@@ -196,7 +196,7 @@ func TestAsString(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	sv := doc.ValueAt("A").AsString("default")
 	assert.Equal(sv, "Level One")
@@ -225,7 +225,7 @@ func TestAsInt(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	iv := doc.ValueAt("A").AsInt(-1)
 	assert.Equal(iv, -1)
@@ -246,7 +246,7 @@ func TestAsFloat64(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	fv := doc.ValueAt("A").AsFloat64(-1.0)
 	assert.Equal(fv, -1.0)
@@ -269,7 +269,7 @@ func TestAsBool(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	bv := doc.ValueAt("A").AsBool(false)
 	assert.Equal(bv, false)
@@ -290,7 +290,7 @@ func TestQuery(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Parse(bs)
+	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(err)
 	pvs, err := doc.Query("Z/*")
 	assert.Nil(err)
@@ -396,7 +396,7 @@ func TestMarshalJSON(t *testing.T) {
 
 	// Compare input and output.
 	bsIn, _ := createDocument(assert)
-	parsedDoc, err := gjp.Parse(bsIn)
+	parsedDoc, err := gjp.Unmarshal(bsIn)
 	assert.Nil(err)
 	bsOut, err := parsedDoc.MarshalJSON()
 	assert.Nil(err)
