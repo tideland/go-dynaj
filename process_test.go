@@ -40,7 +40,7 @@ func TestProcess(t *testing.T) {
 	assert.NoError(err)
 
 	// Verify iteration of all nodes.
-	err = doc.Process(processor)
+	err = doc.Root().Process(processor)
 	assert.NoError(err)
 	assert.Length(values, 27)
 	assert.Contains(`"/B/0/B" = "100"`, values)
@@ -51,12 +51,13 @@ func TestProcess(t *testing.T) {
 	processor = func(pv *gjp.PathValue) error {
 		return errors.New("ouch")
 	}
-	err = doc.Process(processor)
+	err = doc.Root().Process(processor)
 	assert.ErrorContains(err, "ouch")
 }
 
-// TestProcessPath tests the processing of documents starting at a path.
-func TestProcessPath(t *testing.T) {
+// TestValueAtProcess tests the processing of documents starting at a
+// deeper node.
+func TestValueAtProcess(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
@@ -70,28 +71,28 @@ func TestProcessPath(t *testing.T) {
 	assert.NoError(err)
 
 	// Verify iteration of all nodes.
-	err = doc.ProcessPath("/B/0/D", processor)
+	err = doc.ValueAt("/B/0/D").Process(processor)
 	assert.NoError(err)
 	assert.Length(values, 2)
 	assert.Contains(`"/B/0/D/A" = "Level Three - 0"`, values)
 	assert.Contains(`"/B/0/D/B" = "10.1"`, values)
 
 	values = []string{}
-	err = doc.ProcessPath("/B/1", processor)
+	err = doc.ValueAt("/B/1").Process(processor)
 	assert.NoError(err)
 	assert.Length(values, 8)
 	assert.Contains(`"/B/1/S/2" = "white"`, values)
 	assert.Contains(`"/B/1/B" = "200"`, values)
 
 	// Verifiy iteration of non-existing path.
-	err = doc.ProcessPath("/B/3", processor)
+	err = doc.ValueAt("/B/3").Process(processor)
 	assert.ErrorContains(err, "invalid path")
 
 	// Verify procesing error.
 	processor = func(pv *gjp.PathValue) error {
 		return errors.New("ouch")
 	}
-	err = doc.ProcessPath("/A", processor)
+	err = doc.ValueAt("/A").Process(processor)
 	assert.ErrorContains(err, "ouch")
 }
 
@@ -111,7 +112,7 @@ func TestRange(t *testing.T) {
 
 	// Verify range of object.
 	values = []string{}
-	err = doc.Range("/B/0/D", processor)
+	err = doc.ValueAt("/B/0/D").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 2)
 	assert.Contains(`"/B/0/D/A" = "Level Three - 0"`, values)
@@ -119,7 +120,7 @@ func TestRange(t *testing.T) {
 
 	// Verify range of array.
 	values = []string{}
-	err = doc.Range("/B/1/S", processor)
+	err = doc.ValueAt("/B/1/S").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 3)
 	assert.Contains(`"/B/1/S/0" = "orange"`, values)
@@ -128,25 +129,99 @@ func TestRange(t *testing.T) {
 
 	// Verify range of value.
 	values = []string{}
-	err = doc.Range("/A", processor)
+	err = doc.ValueAt("/A").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 1)
 	assert.Contains(`"/A" = "Level One"`, values)
 
 	// Verify range of non-existing path.
-	err = doc.Range("/B/0/D/X", processor)
+	err = doc.ValueAt("/B/0/D/X").Range(processor)
 	assert.ErrorContains(err, "invalid path")
 
 	// Verify range of mixed types.
-	err = doc.Range("/B/0", processor)
+	err = doc.ValueAt("/B/0").Range(processor)
 	assert.ErrorContains(err, "is object or array")
 
 	// Verify procesing error.
 	processor = func(pv *gjp.PathValue) error {
 		return errors.New("ouch")
 	}
-	err = doc.Range("/A", processor)
+	err = doc.ValueAt("/A").Range(processor)
 	assert.ErrorContains(err, "ouch")
+}
+
+// TestRootQuery tests querying a document.
+func TestRootQuery(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+	bs, _ := createDocument(assert)
+
+	doc, err := gjp.Unmarshal(bs)
+	assert.NoError(err)
+	pvs, err := doc.Root().Query("Z/*")
+	assert.NoError(err)
+	assert.Length(pvs, 0)
+	pvs, err = doc.Root().Query("*")
+	assert.NoError(err)
+	assert.Length(pvs, 27)
+	pvs, err = doc.Root().Query("/A")
+	assert.NoError(err)
+	assert.Length(pvs, 1)
+	pvs, err = doc.Root().Query("/B/*")
+	assert.NoError(err)
+	assert.Length(pvs, 24)
+	pvs, err = doc.Root().Query("/B/[01]/*")
+	assert.NoError(err)
+	assert.Length(pvs, 18)
+	pvs, err = doc.Root().Query("/B/[01]/*A")
+	assert.NoError(err)
+	assert.Length(pvs, 4)
+	pvs, err = doc.Root().Query("*/S/*")
+	assert.NoError(err)
+	assert.Length(pvs, 8)
+	pvs, err = doc.Root().Query("*/S/3")
+	assert.NoError(err)
+	assert.Length(pvs, 1)
+
+	// Verify the content
+	pvs, err = doc.Root().Query("/A")
+	assert.NoError(err)
+	assert.Equal(pvs[0].Path(), "/A")
+	assert.Equal(pvs[0].AsString(""), "Level One")
+}
+
+// TestValueAtQuery tests querying a document starting at a deeper node.
+func TestValueAtQuery(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+	bs, _ := createDocument(assert)
+
+	doc, err := gjp.Unmarshal(bs)
+	assert.NoError(err)
+	pvs, err := doc.ValueAt("/B/0/D").Query("Z/*")
+	assert.NoError(err)
+	assert.Length(pvs, 0)
+	pvs, err = doc.ValueAt("/B/0/D").Query("*")
+	assert.NoError(err)
+	assert.Length(pvs, 2)
+	pvs, err = doc.ValueAt("/B/0/D").Query("A")
+	assert.NoError(err)
+	assert.Length(pvs, 1)
+	pvs, err = doc.ValueAt("/B/0/D").Query("B")
+	assert.NoError(err)
+	assert.Length(pvs, 1)
+	pvs, err = doc.ValueAt("/B/0/D").Query("C")
+	assert.NoError(err)
+	assert.Length(pvs, 0)
+	pvs, err = doc.ValueAt("/B/1").Query("S/*")
+	assert.NoError(err)
+	assert.Length(pvs, 3)
+	pvs, err = doc.ValueAt("/B/1").Query("S/2")
+	assert.NoError(err)
+	assert.Length(pvs, 1)
+
+	// Verify non-existing path.
+	pvs, err = doc.ValueAt("Z/Z/Z").Query("/A")
+	assert.ErrorContains(err, "invalid path")
+	assert.Length(pvs, 0)
 }
 
 // EOF

@@ -87,7 +87,7 @@ func (d *Diff) compare() error {
 		}
 		return nil
 	}
-	err := d.first.Process(firstProcessor)
+	err := d.first.Root().Process(firstProcessor)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (d *Diff) compare() error {
 		d.paths = append(d.paths, pv.path)
 		return nil
 	}
-	return d.second.Process(secondProcessor)
+	return d.second.Root().Process(secondProcessor)
 }
 
 // EOF

@@ -21,25 +21,25 @@ import (
 // PROCESSING FUNCTIONS
 //--------------------
 
-// splitPath splits and cleans the path into parts.
-func splitPath(path string) []string {
-	parts := strings.Split(path, Separator)
+// splitPath splits and cleans the path into keys.
+func splitPath(path Path) Keys {
+	keys := strings.Split(path, Separator)
 	out := []string{}
-	for _, part := range parts {
-		if part != "" {
-			out = append(out, part)
+	for _, key := range keys {
+		if key != "" {
+			out = append(out, key)
 		}
 	}
 	return out
 }
 
 // ht retrieves head and tail from a list of keys.
-func ht(keys []string) (string, []string) {
+func ht(keys Keys) (Key, Keys) {
 	switch len(keys) {
 	case 0:
-		return "", []string{}
+		return "", Keys{}
 	case 1:
-		return keys[0], []string{}
+		return keys[0], Keys{}
 	default:
 		return keys[0], keys[1:]
 	}
@@ -66,7 +66,7 @@ func isValue(node Node) bool {
 }
 
 // valueAt returns the value at the given path.
-func valueAt(node Node, keys []string) (Node, error) {
+func valueAt(node Node, keys Keys) (Node, error) {
 	if len(keys) == 0 {
 		// End of the path.
 		return node, nil
@@ -97,8 +97,17 @@ func valueAt(node Node, keys []string) (Node, error) {
 }
 
 // pathify creates a path out of keys.
-func pathify(parts []string) string {
-	return Separator + strings.Join(parts, Separator)
+func pathify(keys Keys) Path {
+	return Separator + strings.Join(keys, Separator)
+}
+
+// appendKey appends a key to a path.
+func appendKey(path Path, key Key) Path {
+	if len(path) == 1 {
+		// Root path.
+		return path + key
+	}
+	return path + Separator + key
 }
 
 // EOF

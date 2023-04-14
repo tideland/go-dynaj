@@ -32,7 +32,7 @@ func TestBuilding(t *testing.T) {
 	// Most simple document.
 	doc := gjp.NewDocument()
 	err := doc.SetValueAt("", "foo")
-	assert.Nil(err)
+	assert.NoError(err)
 
 	sv := doc.ValueAt("").AsString("bar")
 	assert.Equal(sv, "foo")
@@ -40,17 +40,17 @@ func TestBuilding(t *testing.T) {
 	// Positive cases.
 	doc = gjp.NewDocument()
 	err = doc.SetValueAt("/a/b/x", 1)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = doc.SetValueAt("/a/b/y", true)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = doc.SetValueAt("/a/c", "quick brown fox")
-	assert.Nil(err)
+	assert.NoError(err)
 	err = doc.SetValueAt("/a/d/0/z", 47.11)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = doc.SetValueAt("/a/d/1/z", nil)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = doc.SetValueAt("/a/d/2", 2)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	iv := doc.ValueAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 1)
@@ -63,8 +63,8 @@ func TestBuilding(t *testing.T) {
 	nv := doc.ValueAt("a/d/1/z").IsUndefined()
 	assert.True(nv)
 
-	pvs, err := doc.Query("*x")
-	assert.Nil(err)
+	pvs, err := doc.Root().Query("*x")
+	assert.NoError(err)
 	assert.Length(pvs, 1)
 
 	// Now provoke errors.
@@ -87,7 +87,7 @@ func TestBuilding(t *testing.T) {
 
 	// Legal change of values.
 	err = doc.SetValueAt("/a/b/x", 2)
-	assert.Nil(err)
+	assert.NoError(err)
 	iv = doc.ValueAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 2)
 }
@@ -100,7 +100,7 @@ func TestParseError(t *testing.T) {
 
 	doc, err := gjp.Unmarshal(bs)
 	assert.Nil(doc)
-	assert.ErrorMatch(err, `.*cannot unmarshal document.*`)
+	assert.ErrorContains(err, "cannot unmarshal document")
 }
 
 // TestClear tests to clear a document.
@@ -109,7 +109,7 @@ func TestClear(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	doc.Clear()
 	err = doc.SetValueAt("/", "foo")
 	assert.NoError(err)
@@ -123,7 +123,7 @@ func TestLength(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	l := doc.Length("X")
 	assert.Equal(l, -1)
 	l = doc.Length("")
@@ -146,13 +146,13 @@ func TestNotFound(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 
 	// Check if is undefined.
 	pv := doc.ValueAt("you-wont-find-me")
 	assert.False(pv.IsUndefined())
 	assert.True(pv.IsError())
-	assert.ErrorContains(pv.Err(), `cannot find value at "you-wont-find-me"`)
+	assert.ErrorContains(pv.Err(), "invalid path")
 }
 
 // TestString verifies the string representation of a document.
@@ -161,7 +161,7 @@ func TestString(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	s := doc.String()
 	assert.Equal(s, string(bs))
 }
@@ -172,7 +172,7 @@ func TestAsString(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	sv := doc.ValueAt("A").AsString("default")
 	assert.Equal(sv, "Level One")
 	sv = doc.ValueAt("B/0/B").AsString("default")
@@ -189,7 +189,7 @@ func TestAsString(t *testing.T) {
 	sv = doc.ValueAt("Z/Z/Z").String()
 
 	// Difference between invalid path and nil value.
-	assert.Contains("cannot find value at", sv)
+	assert.Contains("invalid path", sv)
 	doc.SetValueAt("Z/Z/Z", nil)
 	sv = doc.ValueAt("Z/Z/Z").String()
 	assert.Equal(sv, "null")
@@ -201,7 +201,7 @@ func TestAsInt(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	iv := doc.ValueAt("A").AsInt(-1)
 	assert.Equal(iv, -1)
 	iv = doc.ValueAt("B/0/B").AsInt(-1)
@@ -222,7 +222,7 @@ func TestAsFloat64(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	fv := doc.ValueAt("A").AsFloat64(-1.0)
 	assert.Equal(fv, -1.0)
 	fv = doc.ValueAt("B/0/B").AsFloat64(-1.0)
@@ -245,7 +245,7 @@ func TestAsBool(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
+	assert.NoError(err)
 	bv := doc.ValueAt("A").AsBool(false)
 	assert.Equal(bv, false)
 	bv = doc.ValueAt("B/0/C").AsBool(false)
@@ -260,44 +260,6 @@ func TestAsBool(t *testing.T) {
 	assert.Equal(bv, false)
 }
 
-// TestQuery tests querying a document.
-func TestQuery(t *testing.T) {
-	assert := asserts.NewTesting(t, asserts.FailStop)
-	bs, _ := createDocument(assert)
-
-	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
-	pvs, err := doc.Query("Z/*")
-	assert.Nil(err)
-	assert.Length(pvs, 0)
-	pvs, err = doc.Query("*")
-	assert.Nil(err)
-	assert.Length(pvs, 27)
-	pvs, err = doc.Query("/A")
-	assert.Nil(err)
-	assert.Length(pvs, 1)
-	pvs, err = doc.Query("/B/*")
-	assert.Nil(err)
-	assert.Length(pvs, 24)
-	pvs, err = doc.Query("/B/[01]/*")
-	assert.Nil(err)
-	assert.Length(pvs, 18)
-	pvs, err = doc.Query("/B/[01]/*A")
-	assert.Nil(err)
-	assert.Length(pvs, 4)
-	pvs, err = doc.Query("*/S/*")
-	assert.Nil(err)
-	assert.Length(pvs, 8)
-	pvs, err = doc.Query("*/S/3")
-	assert.Nil(err)
-	assert.Length(pvs, 1)
-
-	pvs, err = doc.Query("/A")
-	assert.Nil(err)
-	assert.Equal(pvs[0].Path(), "/A")
-	assert.Equal(pvs[0].AsString(""), "Level One")
-}
-
 // TestMarshalJSON tests building a JSON document again.
 func TestMarshalJSON(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
@@ -305,20 +267,20 @@ func TestMarshalJSON(t *testing.T) {
 	// Compare input and output.
 	bsIn, _ := createDocument(assert)
 	parsedDoc, err := gjp.Unmarshal(bsIn)
-	assert.Nil(err)
+	assert.NoError(err)
 	bsOut, err := parsedDoc.MarshalJSON()
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(bsOut, bsIn)
 
 	// Now create a built one.
 	builtDoc := gjp.NewDocument()
 	err = builtDoc.SetValueAt("/a/2/x", 1)
-	assert.Nil(err)
+	assert.NoError(err)
 	err = builtDoc.SetValueAt("/a/4/y", true)
-	assert.Nil(err)
+	assert.NoError(err)
 	bsIn = []byte(`{"a":[null,null,{"x":1},null,{"y":true}]}`)
 	bsOut, err = builtDoc.MarshalJSON()
-	assert.Nil(err)
+	assert.NoError(err)
 	assert.Equal(bsOut, bsIn)
 }
 
@@ -394,7 +356,7 @@ func createDocument(assert *asserts.Asserts) ([]byte, *levelOne) {
 		T: time.Date(2018, time.April, 29, 20, 30, 0, 0, time.UTC),
 	}
 	bs, err := json.Marshal(lo)
-	assert.Nil(err)
+	assert.NoError(err)
 	return bs, lo
 }
 
@@ -438,7 +400,7 @@ func createCompareDocument(assert *asserts.Asserts) []byte {
 		T: time.Date(2018, time.April, 29, 20, 59, 0, 0, time.UTC),
 	}
 	bs, err := json.Marshal(lo)
-	assert.Nil(err)
+	assert.NoError(err)
 	return bs
 }
 
