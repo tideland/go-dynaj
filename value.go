@@ -21,9 +21,10 @@ import (
 // PATH VALUE
 //--------------------
 
-// ValueProcessor describes a function for the processing of
-// values while iterating over a document.
-type ValueProcessor func(pv *PathValue) error
+// Processor defines the signature of function for processing
+// a path value. This may be the iterating over the whole
+// document or one object or array.
+type Processor func(pv *PathValue) error
 
 // PathValue is the combination of path and its node value.
 type PathValue struct {
@@ -150,7 +151,7 @@ func (pv *PathValue) Equals(to *PathValue) bool {
 }
 
 // Process processes the value with the passed processor.
-func (pv *PathValue) Process(process ValueProcessor) error {
+func (pv *PathValue) Process(process Processor) error {
 	return process(pv)
 }
 

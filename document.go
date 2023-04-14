@@ -108,11 +108,119 @@ func (d *Document) Query(pattern string) (PathValues, error) {
 	return pvs, err
 }
 
-// Process iterates over a document and processes its values.
-// There's no order, so nesting into an embedded document or
-// list may come earlier than higher level paths.
-func (d *Document) Process(processor ValueProcessor) error {
-	return process(d.root, []string{}, processor)
+// Process iterates recursively over a document and processes all
+// its values.
+func (d *Document) Process(processor Processor) error {
+	return d.process(d.root, []string{}, processor)
+}
+
+// ProcessPath iterates recursively over a document starting at the
+// given path and processes all its values.
+func (d *Document) ProcessPath(path string, processor Processor) error {
+	keys := splitPath(path)
+	node, err := valueAt(d.root, keys)
+	if err != nil {
+		return fmt.Errorf("cannot process path %q: %v", path, err)
+	}
+	return d.process(node, keys, processor)
+}
+
+// process is the internal recursive function for processing.
+func (d *Document) process(node Node, keys []string, process Processor) error {
+	switch tnode := node.(type) {
+	case Object:
+		// A JSON object.
+		if len(tnode) == 0 {
+			return process(&PathValue{
+				path: pathify(keys),
+				node: Object{},
+			})
+		}
+		for key, subnode := range tnode {
+			objectKeys := append(keys, key)
+			if err := d.process(subnode, objectKeys, process); err != nil {
+				return fmt.Errorf("cannot process %q: %v", pathify(objectKeys), err)
+			}
+		}
+	case Array:
+		// A JSON array.
+		if len(tnode) == 0 {
+			return process(&PathValue{
+				path: pathify(keys),
+				node: Array{},
+			})
+		}
+		for idx, subnode := range tnode {
+			arrayKeys := append(keys, strconv.Itoa(idx))
+			if err := d.process(subnode, arrayKeys, process); err != nil {
+				return fmt.Errorf("cannot process %q: %v", pathify(arrayKeys), err)
+			}
+		}
+	default:
+		// A single value at the end.
+		err := process(&PathValue{
+			path: pathify(keys),
+			node: tnode,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot process %q: %v", pathify(keys), err)
+		}
+	}
+	return nil
+}
+
+// Range iterates over the node addressed by the given path and using
+// the processor for each value. It is not working recursively. In
+// case of an object all keys and in case of an array all indices will
+// be processed. In case of a value the processor will be called only
+// once.
+func (d *Document) Range(path string, process Processor) error {
+	node, err := valueAt(d.root, splitPath(path))
+	if err != nil {
+		return fmt.Errorf("cannot find value at %q: %v", path, err)
+	}
+	switch tnode := node.(type) {
+	case Object:
+		// A JSON object.
+		for key := range tnode {
+			keypath := path + Separator + key
+			if isObjectOrArray(tnode[key]) {
+				return fmt.Errorf("cannot process %q: is object or array", keypath)
+			}
+			err := process(&PathValue{
+				path: keypath,
+				node: tnode[key],
+			})
+			if err != nil {
+				return fmt.Errorf("cannot process %q: %v", keypath, err)
+			}
+		}
+	case Array:
+		// A JSON array.
+		for idx := range tnode {
+			idxpath := path + Separator + strconv.Itoa(idx)
+			if isObjectOrArray(tnode[idx]) {
+				return fmt.Errorf("cannot process %q: is object or array", idxpath)
+			}
+			err := process(&PathValue{
+				path: idxpath,
+				node: tnode[idx],
+			})
+			if err != nil {
+				return fmt.Errorf("cannot process %q: %v", idxpath, err)
+			}
+		}
+	default:
+		// A single value at the end.
+		err := process(&PathValue{
+			path: path,
+			node: tnode,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot process %q: %v", path, err)
+		}
+	}
+	return nil
 }
 
 // MarshalJSON implements json.Marshaler.

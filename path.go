@@ -101,47 +101,4 @@ func pathify(parts []string) string {
 	return Separator + strings.Join(parts, Separator)
 }
 
-// process processes node recursively.
-func process(node any, keys []string, processor ValueProcessor) error {
-	mkerr := func(err error, ps []string) error {
-		return fmt.Errorf("cannot process '%s': %v", pathify(ps), err)
-	}
-
-	switch tnode := node.(type) {
-	case Object:
-		// A JSON object.
-		if len(tnode) == 0 {
-			return (&PathValue{
-				path: pathify(keys),
-			}).Process(processor)
-		}
-		for key, subnode := range tnode {
-			objectKeys := append(keys, key)
-			if err := process(subnode, objectKeys, processor); err != nil {
-				return mkerr(err, keys)
-			}
-		}
-	case Array:
-		// A JSON array.
-		if len(tnode) == 0 {
-			return (&PathValue{
-				path: pathify(keys),
-			}).Process(processor)
-		}
-		for index, subnode := range tnode {
-			arrayKeys := append(keys, strconv.Itoa(index))
-			if err := process(subnode, arrayKeys, processor); err != nil {
-				return mkerr(err, keys)
-			}
-		}
-	default:
-		// A single value at the end.
-		return (&PathValue{
-			path: pathify(keys),
-			node: tnode,
-		}).Process(processor)
-	}
-	return nil
-}
-
 // EOF

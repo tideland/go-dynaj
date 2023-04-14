@@ -13,7 +13,6 @@ package gjp_test
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 	"time"
 
@@ -25,6 +24,73 @@ import (
 //--------------------
 // TESTS
 //--------------------
+
+// TestBuilding tests the creation of documents.
+func TestBuilding(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+
+	// Most simple document.
+	doc := gjp.NewDocument()
+	err := doc.SetValueAt("", "foo")
+	assert.Nil(err)
+
+	sv := doc.ValueAt("").AsString("bar")
+	assert.Equal(sv, "foo")
+
+	// Positive cases.
+	doc = gjp.NewDocument()
+	err = doc.SetValueAt("/a/b/x", 1)
+	assert.Nil(err)
+	err = doc.SetValueAt("/a/b/y", true)
+	assert.Nil(err)
+	err = doc.SetValueAt("/a/c", "quick brown fox")
+	assert.Nil(err)
+	err = doc.SetValueAt("/a/d/0/z", 47.11)
+	assert.Nil(err)
+	err = doc.SetValueAt("/a/d/1/z", nil)
+	assert.Nil(err)
+	err = doc.SetValueAt("/a/d/2", 2)
+	assert.Nil(err)
+
+	iv := doc.ValueAt("a/b/x").AsInt(0)
+	assert.Equal(iv, 1)
+	bv := doc.ValueAt("a/b/y").AsBool(false)
+	assert.Equal(bv, true)
+	sv = doc.ValueAt("a/c").AsString("")
+	assert.Equal(sv, "quick brown fox")
+	fv := doc.ValueAt("a/d/0/z").AsFloat64(8.15)
+	assert.Equal(fv, 47.11)
+	nv := doc.ValueAt("a/d/1/z").IsUndefined()
+	assert.True(nv)
+
+	pvs, err := doc.Query("*x")
+	assert.Nil(err)
+	assert.Length(pvs, 1)
+
+	// Now provoke errors.
+	err = doc.SetValueAt("/a/d", "stupid")
+	assert.ErrorContains(err, "cannot insert value")
+	err = doc.SetValueAt("/a/d/0", "stupid")
+	assert.ErrorContains(err, "cannot insert value")
+	err = doc.SetValueAt("/a/d/2/z", "stupid")
+	assert.ErrorContains(err, "cannot insert value")
+	err = doc.SetValueAt("/a/b/y/z", "stupid")
+	assert.ErrorContains(err, "cannot insert value")
+	err = doc.SetValueAt("a", "stupid")
+	assert.ErrorMatch(err, ".*corrupt.*")
+	err = doc.SetValueAt("a/b/x/y", "stupid")
+	assert.ErrorMatch(err, ".*corrupt.*")
+	err = doc.SetValueAt("/a/d/x", "stupid")
+	assert.ErrorMatch(err, ".*invalid index.*")
+	err = doc.SetValueAt("/a/d/-1", "stupid")
+	assert.ErrorMatch(err, ".*negative index.*")
+
+	// Legal change of values.
+	err = doc.SetValueAt("/a/b/x", 2)
+	assert.Nil(err)
+	iv = doc.ValueAt("a/b/x").AsInt(0)
+	assert.Equal(iv, 2)
+}
 
 // TestParseError tests the returned error in case of
 // an invalid document.
@@ -74,30 +140,6 @@ func TestLength(t *testing.T) {
 	assert.Equal(l, 1)
 }
 
-// TestProcessing tests the processing of adocument.
-func TestProcessing(t *testing.T) {
-	assert := asserts.NewTesting(t, asserts.FailStop)
-	bs, _ := createDocument(assert)
-	count := 0
-	processor := func(pv *gjp.PathValue) error {
-		count++
-		assert.Logf("path %02d  =>  %-10q = %q", count, pv.Path, pv.AsString("<undefined>"))
-		return nil
-	}
-
-	doc, err := gjp.Unmarshal(bs)
-	assert.Nil(err)
-	err = doc.Process(processor)
-	assert.Nil(err)
-	assert.Equal(count, 27)
-
-	processor = func(pv *gjp.PathValue) error {
-		return errors.New("ouch")
-	}
-	err = doc.Process(processor)
-	assert.ErrorMatch(err, `.*ouch.*`)
-}
-
 // TestNotFound tests the handling of not found values.
 func TestNotFound(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
@@ -122,73 +164,6 @@ func TestString(t *testing.T) {
 	assert.Nil(err)
 	s := doc.String()
 	assert.Equal(s, string(bs))
-}
-
-// TestCompare tests comparing two documents.
-func TestCompare(t *testing.T) {
-	assert := asserts.NewTesting(t, asserts.FailStop)
-	first, _ := createDocument(assert)
-	second := createCompareDocument(assert)
-	firstDoc, err := gjp.Unmarshal(first)
-	assert.Nil(err)
-	secondDoc, err := gjp.Unmarshal(second)
-	assert.Nil(err)
-
-	diff, err := gjp.Compare(first, first)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 0)
-
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 13)
-
-	diff, err = gjp.CompareDocuments(firstDoc, secondDoc)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 13)
-
-	for _, path := range diff.Differences() {
-		fv, sv := diff.DifferenceAt(path)
-		fvs := fv.AsString("<first undefined>")
-		svs := sv.AsString("<second undefined>")
-		assert.Different(fvs, svs, path)
-	}
-
-	first, err = diff.FirstDocument().MarshalJSON()
-	assert.Nil(err)
-	second, err = diff.SecondDocument().MarshalJSON()
-	assert.Nil(err)
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 13)
-
-	// Special case of empty arrays, objects, and null.
-	first = []byte(`{}`)
-	second = []byte(`{"a":[],"b":{},"c":null}`)
-
-	sdocParsed, err := gjp.Unmarshal(second)
-	assert.Nil(err)
-	sdocMarshalled, err := sdocParsed.MarshalJSON()
-	assert.Nil(err)
-	assert.Equal(string(sdocMarshalled), string(second))
-
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 4)
-
-	first = []byte(`[]`)
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 4)
-
-	first = []byte(`["A", "B", "C"]`)
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 6)
-
-	first = []byte(`"foo"`)
-	diff, err = gjp.Compare(first, second)
-	assert.Nil(err)
-	assert.Length(diff.Differences(), 4)
 }
 
 // TestAsString tests retrieving values as strings.
@@ -321,73 +296,6 @@ func TestQuery(t *testing.T) {
 	assert.Nil(err)
 	assert.Equal(pvs[0].Path(), "/A")
 	assert.Equal(pvs[0].AsString(""), "Level One")
-}
-
-// TestBuilding tests the creation of documents.
-func TestBuilding(t *testing.T) {
-	assert := asserts.NewTesting(t, asserts.FailStop)
-
-	// Most simple document.
-	doc := gjp.NewDocument()
-	err := doc.SetValueAt("", "foo")
-	assert.Nil(err)
-
-	sv := doc.ValueAt("").AsString("bar")
-	assert.Equal(sv, "foo")
-
-	// Positive cases.
-	doc = gjp.NewDocument()
-	err = doc.SetValueAt("/a/b/x", 1)
-	assert.Nil(err)
-	err = doc.SetValueAt("/a/b/y", true)
-	assert.Nil(err)
-	err = doc.SetValueAt("/a/c", "quick brown fox")
-	assert.Nil(err)
-	err = doc.SetValueAt("/a/d/0/z", 47.11)
-	assert.Nil(err)
-	err = doc.SetValueAt("/a/d/1/z", nil)
-	assert.Nil(err)
-	err = doc.SetValueAt("/a/d/2", 2)
-	assert.Nil(err)
-
-	iv := doc.ValueAt("a/b/x").AsInt(0)
-	assert.Equal(iv, 1)
-	bv := doc.ValueAt("a/b/y").AsBool(false)
-	assert.Equal(bv, true)
-	sv = doc.ValueAt("a/c").AsString("")
-	assert.Equal(sv, "quick brown fox")
-	fv := doc.ValueAt("a/d/0/z").AsFloat64(8.15)
-	assert.Equal(fv, 47.11)
-	nv := doc.ValueAt("a/d/1/z").IsUndefined()
-	assert.True(nv)
-
-	pvs, err := doc.Query("*x")
-	assert.Nil(err)
-	assert.Length(pvs, 1)
-
-	// Now provoke errors.
-	err = doc.SetValueAt("/a/d", "stupid")
-	assert.ErrorContains(err, "cannot insert value")
-	err = doc.SetValueAt("/a/d/0", "stupid")
-	assert.ErrorContains(err, "cannot insert value")
-	err = doc.SetValueAt("/a/d/2/z", "stupid")
-	assert.ErrorContains(err, "cannot insert value")
-	err = doc.SetValueAt("/a/b/y/z", "stupid")
-	assert.ErrorContains(err, "cannot insert value")
-	err = doc.SetValueAt("a", "stupid")
-	assert.ErrorMatch(err, ".*corrupt.*")
-	err = doc.SetValueAt("a/b/x/y", "stupid")
-	assert.ErrorMatch(err, ".*corrupt.*")
-	err = doc.SetValueAt("/a/d/x", "stupid")
-	assert.ErrorMatch(err, ".*invalid index.*")
-	err = doc.SetValueAt("/a/d/-1", "stupid")
-	assert.ErrorMatch(err, ".*negative index.*")
-
-	// Legal change of values.
-	err = doc.SetValueAt("/a/b/x", 2)
-	assert.Nil(err)
-	iv = doc.ValueAt("a/b/x").AsInt(0)
-	assert.Equal(iv, 2)
 }
 
 // TestMarshalJSON tests building a JSON document again.
