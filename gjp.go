@@ -24,6 +24,16 @@ const (
 // TYPES
 //--------------------
 
+// Path represents a path in a JSON document. It is a string using
+// the Separator as separator between the keys and indices.
+type Path = string
+
+// Key represents a key or string index in a JSON object.
+type Key = string
+
+// Keys represents a list of keys.
+type Keys = []Key
+
 // Node may be a JSON object, array or value.
 type Node = any
 

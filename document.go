@@ -15,8 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	"tideland.dev/go/matcher"
 )
 
 //--------------------
@@ -81,38 +79,24 @@ func (d *Document) ValueAt(path string) *PathValue {
 	}
 	node, err := valueAt(d.root, splitPath(path))
 	if err != nil {
-		pv.err = fmt.Errorf("cannot find value at %q: %v", path, err)
+		pv.err = fmt.Errorf("invalid path %q: %v", path, err)
 	} else {
 		pv.node = node
 	}
 	return pv
 }
 
+// Root returns the root path value.
+func (d *Document) Root() *PathValue {
+	return &PathValue{
+		path: Separator,
+		node: d.root,
+	}
+}
+
 // Clear removes the document data.
 func (d *Document) Clear() {
 	d.root = nil
-}
-
-// Query allows to find pathes matching a given pattern.
-func (d *Document) Query(pattern string) (PathValues, error) {
-	pvs := PathValues{}
-	err := d.Process(func(pv *PathValue) error {
-		if matcher.Matches(pattern, pv.path, false) {
-			pvs = append(pvs, &PathValue{
-				path: pv.path,
-				node: pv.node,
-			})
-		}
-		return nil
-	})
-	return pvs, err
-}
-
-// Process iterates over a document and processes its values.
-// There's no order, so nesting into an embedded document or
-// list may come earlier than higher level paths.
-func (d *Document) Process(processor ValueProcessor) error {
-	return process(d.root, []string{}, processor)
 }
 
 // MarshalJSON implements json.Marshaler.

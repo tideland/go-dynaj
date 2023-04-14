@@ -15,19 +15,23 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
+
+	"tideland.dev/go/matcher"
 )
 
 //--------------------
 // PATH VALUE
 //--------------------
 
-// ValueProcessor describes a function for the processing of
-// values while iterating over a document.
-type ValueProcessor func(pv *PathValue) error
+// Processor defines the signature of function for processing
+// a path value. This may be the iterating over the whole
+// document or one object or array.
+type Processor func(pv *PathValue) error
 
 // PathValue is the combination of path and its node value.
 type PathValue struct {
-	path string
+	path Path
 	node Node
 	err  error
 }
@@ -149,19 +153,139 @@ func (pv *PathValue) Equals(to *PathValue) bool {
 	}
 }
 
-// Process processes the value with the passed processor.
-func (pv *PathValue) Process(process ValueProcessor) error {
-	return process(pv)
-}
-
 // Path returns the path of the value.
-func (pv *PathValue) Path() string {
+func (pv *PathValue) Path() Path {
 	return pv.path
 }
 
 // SplitPath splits the path into its keys.
-func (pv *PathValue) SplitPath() []string {
+func (pv *PathValue) SplitPath() Keys {
 	return splitPath(pv.path)
+}
+
+// Process iterates over the node and all its subnodes and
+// processes them with the passed processor function.
+func (pv *PathValue) Process(process Processor) error {
+	if pv.err != nil {
+		return pv.err
+	}
+	switch tnode := pv.node.(type) {
+	case Object:
+		// A JSON object.
+		if len(tnode) == 0 {
+			return process(&PathValue{
+				path: pv.path,
+				node: Object{},
+			})
+		}
+		for key, subnode := range tnode {
+			subpath := appendKey(pv.path, key)
+			subvalue := &PathValue{
+				path: subpath,
+				node: subnode,
+			}
+			if err := subvalue.Process(process); err != nil {
+				return fmt.Errorf("cannot process %q: %v", subpath, err)
+			}
+		}
+	case Array:
+		// A JSON array.
+		if len(tnode) == 0 {
+			return process(&PathValue{
+				path: pv.path,
+				node: Array{},
+			})
+		}
+		for idx, subnode := range tnode {
+			subpath := appendKey(pv.path, strconv.Itoa(idx))
+			subvalue := &PathValue{
+				path: subpath,
+				node: subnode,
+			}
+			if err := subvalue.Process(process); err != nil {
+				return fmt.Errorf("cannot process %q: %v", subpath, err)
+			}
+		}
+	default:
+		// A single value at the end.
+		err := process(&PathValue{
+			path: pv.path,
+			node: tnode,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot process %q: %v", pv.path, err)
+		}
+	}
+	return nil
+}
+
+// Range takes  the node and processes it with the passed processor
+// function. In case of an object all keys and in case of an array
+// all indices will be processed. It is not working recursively.
+func (pv *PathValue) Range(process Processor) error {
+	if pv.err != nil {
+		return pv.err
+	}
+	switch tnode := pv.node.(type) {
+	case Object:
+		// A JSON object.
+		for key := range tnode {
+			keypath := appendKey(pv.path, key)
+			if isObjectOrArray(tnode[key]) {
+				return fmt.Errorf("cannot process %q: is object or array", keypath)
+			}
+			err := process(&PathValue{
+				path: keypath,
+				node: tnode[key],
+			})
+			if err != nil {
+				return fmt.Errorf("cannot process %q: %v", keypath, err)
+			}
+		}
+	case Array:
+		// A JSON array.
+		for idx := range tnode {
+			idxpath := appendKey(pv.path, strconv.Itoa(idx))
+			if isObjectOrArray(tnode[idx]) {
+				return fmt.Errorf("cannot process %q: is object or array", idxpath)
+			}
+			err := process(&PathValue{
+				path: idxpath,
+				node: tnode[idx],
+			})
+			if err != nil {
+				return fmt.Errorf("cannot process %q: %v", idxpath, err)
+			}
+		}
+	default:
+		// A single value at the end.
+		err := process(&PathValue{
+			path: pv.path,
+			node: tnode,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot process %q: %v", pv.path, err)
+		}
+	}
+	return nil
+}
+
+// Query iterates over the node and all its subnodes and returns
+// all values with paths matching the passed pattern.
+func (pv *PathValue) Query(pattern string) (PathValues, error) {
+	pvs := PathValues{}
+	err := pv.Process(func(ppv *PathValue) error {
+		ppvpath := strings.TrimPrefix(ppv.path, pv.path+Separator)
+		println(pattern + "  =>  " + ppvpath)
+		if matcher.Matches(pattern, ppvpath, false) {
+			pvs = append(pvs, &PathValue{
+				path: ppv.path,
+				node: ppv.node,
+			})
+		}
+		return nil
+	})
+	return pvs, err
 }
 
 // String implements fmt.Stringer.
