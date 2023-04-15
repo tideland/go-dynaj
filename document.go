@@ -23,7 +23,7 @@ import (
 
 // Document represents one JSON document.
 type Document struct {
-	root Node
+	root Element
 }
 
 // Unmarshal parses the JSON-encoded data and stores the result
@@ -45,8 +45,8 @@ func NewDocument() *Document {
 }
 
 // Length returns the number of elements for the given path.
-func (d *Document) Length(path string) int {
-	node, err := valueAt(d.root, splitPath(path))
+func (d *Document) Length(path Path) int {
+	node, err := elementAt(d.root, splitPath(path))
 	if err != nil {
 		return -1
 	}
@@ -62,9 +62,9 @@ func (d *Document) Length(path string) int {
 }
 
 // SetValueAt sets the value at the given path.
-func (d *Document) SetValueAt(path string, value Value) error {
+func (d *Document) SetValueAt(path Path, value Value) error {
 	keys := splitPath(path)
-	root, err := insertValueInNode(d.root, keys, value)
+	root, err := insertValue(d.root, keys, value)
 	if err != nil {
 		return err
 	}
@@ -72,25 +72,25 @@ func (d *Document) SetValueAt(path string, value Value) error {
 	return nil
 }
 
-// ValueAt returns the addressed value.
-func (d *Document) ValueAt(path string) *PathValue {
-	pv := &PathValue{
+// NodeAt returns the addressed value.
+func (d *Document) NodeAt(path Path) *Node {
+	node := &Node{
 		path: path,
 	}
-	node, err := valueAt(d.root, splitPath(path))
+	value, err := elementAt(d.root, splitPath(path))
 	if err != nil {
-		pv.err = fmt.Errorf("invalid path %q: %v", path, err)
+		node.err = fmt.Errorf("invalid path %q: %v", path, err)
 	} else {
-		pv.node = node
+		node.value = value
 	}
-	return pv
+	return node
 }
 
 // Root returns the root path value.
-func (d *Document) Root() *PathValue {
-	return &PathValue{
-		path: Separator,
-		node: d.root,
+func (d *Document) Root() *Node {
+	return &Node{
+		path:  Separator,
+		value: d.root,
 	}
 }
 
@@ -118,12 +118,12 @@ func (d *Document) String() string {
 //--------------------
 
 // insertValue recursively inserts a value at the end of the keys list.
-func insertValueInNode(node Node, keys []string, value Value) (Node, error) {
+func insertValue(element Element, keys Keys, value Value) (Element, error) {
 	if len(keys) == 0 {
 		return value, nil
 	}
 
-	switch tnode := node.(type) {
+	switch tnode := element.(type) {
 	case nil:
 		return createValue(keys, value)
 	case Object:
@@ -136,7 +136,7 @@ func insertValueInNode(node Node, keys []string, value Value) (Node, error) {
 }
 
 // createValue creates a value at the end of the keys list.
-func createValue(keys []string, value Value) (Node, error) {
+func createValue(keys Keys, value Value) (Element, error) {
 	// Check if we are at the end of the keys list.
 	if len(keys) == 0 {
 		return value, nil
@@ -163,7 +163,7 @@ func createValue(keys []string, value Value) (Node, error) {
 }
 
 // insertValueInObject inserts a value in a JSON object at the end of the keys list.
-func insertValueInObject(obj Object, keys []string, value Value) (Node, error) {
+func insertValueInObject(obj Object, keys Keys, value Value) (Element, error) {
 	h, t := ht(keys)
 	// Create object if keys list has only one element.
 	if len(t) == 0 {
@@ -178,7 +178,7 @@ func insertValueInObject(obj Object, keys []string, value Value) (Node, error) {
 	if isValue(node) {
 		return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", keys)
 	}
-	newNode, err := insertValueInNode(node, t, value)
+	newNode, err := insertValue(node, t, value)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func insertValueInObject(obj Object, keys []string, value Value) (Node, error) {
 }
 
 // insertValueInArray inserts a value in an array at a given path.
-func insertValueInArray(arr []any, path []string, value Value) (Node, error) {
+func insertValueInArray(arr Array, path Keys, value Value) (Element, error) {
 	h, t := ht(path)
 	// Convert path head into index.
 	index, err := strconv.Atoi(h)
@@ -215,7 +215,7 @@ func insertValueInArray(arr []any, path []string, value Value) (Node, error) {
 	if isValue(node) {
 		return nil, fmt.Errorf("cannot insert value at %v: would corrupt document", path)
 	}
-	newNode, err := insertValueInNode(node, t, value)
+	newNode, err := insertValue(node, t, value)
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ func TestBuilding(t *testing.T) {
 	err := doc.SetValueAt("", "foo")
 	assert.NoError(err)
 
-	sv := doc.ValueAt("").AsString("bar")
+	sv := doc.NodeAt("").AsString("bar")
 	assert.Equal(sv, "foo")
 
 	// Positive cases.
@@ -52,20 +52,20 @@ func TestBuilding(t *testing.T) {
 	err = doc.SetValueAt("/a/d/2", 2)
 	assert.NoError(err)
 
-	iv := doc.ValueAt("a/b/x").AsInt(0)
+	iv := doc.NodeAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 1)
-	bv := doc.ValueAt("a/b/y").AsBool(false)
+	bv := doc.NodeAt("a/b/y").AsBool(false)
 	assert.Equal(bv, true)
-	sv = doc.ValueAt("a/c").AsString("")
+	sv = doc.NodeAt("a/c").AsString("")
 	assert.Equal(sv, "quick brown fox")
-	fv := doc.ValueAt("a/d/0/z").AsFloat64(8.15)
+	fv := doc.NodeAt("a/d/0/z").AsFloat64(8.15)
 	assert.Equal(fv, 47.11)
-	nv := doc.ValueAt("a/d/1/z").IsUndefined()
+	nv := doc.NodeAt("a/d/1/z").IsUndefined()
 	assert.True(nv)
 
-	pvs, err := doc.Root().Query("*x")
+	nodes, err := doc.Root().Query("*x")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
+	assert.Length(nodes, 1)
 
 	// Now provoke errors.
 	err = doc.SetValueAt("/a/d", "stupid")
@@ -88,7 +88,7 @@ func TestBuilding(t *testing.T) {
 	// Legal change of values.
 	err = doc.SetValueAt("/a/b/x", 2)
 	assert.NoError(err)
-	iv = doc.ValueAt("a/b/x").AsInt(0)
+	iv = doc.NodeAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 2)
 }
 
@@ -113,7 +113,7 @@ func TestClear(t *testing.T) {
 	doc.Clear()
 	err = doc.SetValueAt("/", "foo")
 	assert.NoError(err)
-	foo := doc.ValueAt("/").AsString("<undefined>")
+	foo := doc.NodeAt("/").AsString("<undefined>")
 	assert.Equal(foo, "foo")
 }
 
@@ -149,10 +149,10 @@ func TestNotFound(t *testing.T) {
 	assert.NoError(err)
 
 	// Check if is undefined.
-	pv := doc.ValueAt("you-wont-find-me")
-	assert.False(pv.IsUndefined())
-	assert.True(pv.IsError())
-	assert.ErrorContains(pv.Err(), "invalid path")
+	node := doc.NodeAt("you-wont-find-me")
+	assert.False(node.IsUndefined())
+	assert.True(node.IsError())
+	assert.ErrorContains(node.Err(), "invalid path")
 }
 
 // TestString verifies the string representation of a document.
@@ -173,25 +173,25 @@ func TestAsString(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	sv := doc.ValueAt("A").AsString("default")
+	sv := doc.NodeAt("A").AsString("default")
 	assert.Equal(sv, "Level One")
-	sv = doc.ValueAt("B/0/B").AsString("default")
+	sv = doc.NodeAt("B/0/B").AsString("default")
 	assert.Equal(sv, "100")
-	sv = doc.ValueAt("B/0/C").AsString("default")
+	sv = doc.NodeAt("B/0/C").AsString("default")
 	assert.Equal(sv, "true")
-	sv = doc.ValueAt("B/0/D/B").AsString("default")
+	sv = doc.NodeAt("B/0/D/B").AsString("default")
 	assert.Equal(sv, "10.1")
-	sv = doc.ValueAt("Z/Z/Z").AsString("default")
+	sv = doc.NodeAt("Z/Z/Z").AsString("default")
 	assert.Equal(sv, "default")
 
-	sv = doc.ValueAt("A").String()
+	sv = doc.NodeAt("A").String()
 	assert.Equal(sv, "Level One")
-	sv = doc.ValueAt("Z/Z/Z").String()
+	sv = doc.NodeAt("Z/Z/Z").String()
 
 	// Difference between invalid path and nil value.
 	assert.Contains("invalid path", sv)
 	doc.SetValueAt("Z/Z/Z", nil)
-	sv = doc.ValueAt("Z/Z/Z").String()
+	sv = doc.NodeAt("Z/Z/Z").String()
 	assert.Equal(sv, "null")
 }
 
@@ -202,17 +202,17 @@ func TestAsInt(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	iv := doc.ValueAt("A").AsInt(-1)
+	iv := doc.NodeAt("A").AsInt(-1)
 	assert.Equal(iv, -1)
-	iv = doc.ValueAt("B/0/B").AsInt(-1)
+	iv = doc.NodeAt("B/0/B").AsInt(-1)
 	assert.Equal(iv, 100)
-	iv = doc.ValueAt("B/0/C").AsInt(-1)
+	iv = doc.NodeAt("B/0/C").AsInt(-1)
 	assert.Equal(iv, 1)
-	iv = doc.ValueAt("B/0/S/2").AsInt(-1)
+	iv = doc.NodeAt("B/0/S/2").AsInt(-1)
 	assert.Equal(iv, 1)
-	iv = doc.ValueAt("B/0/D/B").AsInt(-1)
+	iv = doc.NodeAt("B/0/D/B").AsInt(-1)
 	assert.Equal(iv, 10)
-	iv = doc.ValueAt("Z/Z/Z").AsInt(-1)
+	iv = doc.NodeAt("Z/Z/Z").AsInt(-1)
 	assert.Equal(iv, -1)
 }
 
@@ -223,19 +223,19 @@ func TestAsFloat64(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	fv := doc.ValueAt("A").AsFloat64(-1.0)
+	fv := doc.NodeAt("A").AsFloat64(-1.0)
 	assert.Equal(fv, -1.0)
-	fv = doc.ValueAt("B/0/B").AsFloat64(-1.0)
+	fv = doc.NodeAt("B/0/B").AsFloat64(-1.0)
 	assert.Equal(fv, 100.0)
-	fv = doc.ValueAt("B/1/B").AsFloat64(-1.0)
+	fv = doc.NodeAt("B/1/B").AsFloat64(-1.0)
 	assert.Equal(fv, 200.0)
-	fv = doc.ValueAt("B/0/C").AsFloat64(-99)
+	fv = doc.NodeAt("B/0/C").AsFloat64(-99)
 	assert.Equal(fv, 1.0)
-	fv = doc.ValueAt("B/0/S/3").AsFloat64(-1.0)
+	fv = doc.NodeAt("B/0/S/3").AsFloat64(-1.0)
 	assert.Equal(fv, 2.2)
-	fv = doc.ValueAt("B/1/D/B").AsFloat64(-1.0)
+	fv = doc.NodeAt("B/1/D/B").AsFloat64(-1.0)
 	assert.Equal(fv, 20.2)
-	fv = doc.ValueAt("Z/Z/Z").AsFloat64(-1.0)
+	fv = doc.NodeAt("Z/Z/Z").AsFloat64(-1.0)
 	assert.Equal(fv, -1.0)
 }
 
@@ -246,17 +246,17 @@ func TestAsBool(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	bv := doc.ValueAt("A").AsBool(false)
+	bv := doc.NodeAt("A").AsBool(false)
 	assert.Equal(bv, false)
-	bv = doc.ValueAt("B/0/C").AsBool(false)
+	bv = doc.NodeAt("B/0/C").AsBool(false)
 	assert.Equal(bv, true)
-	bv = doc.ValueAt("B/0/S/0").AsBool(false)
+	bv = doc.NodeAt("B/0/S/0").AsBool(false)
 	assert.Equal(bv, false)
-	bv = doc.ValueAt("B/0/S/2").AsBool(false)
+	bv = doc.NodeAt("B/0/S/2").AsBool(false)
 	assert.Equal(bv, true)
-	bv = doc.ValueAt("B/0/S/4").AsBool(false)
+	bv = doc.NodeAt("B/0/S/4").AsBool(false)
 	assert.Equal(bv, true)
-	bv = doc.ValueAt("Z/Z/Z").AsBool(false)
+	bv = doc.NodeAt("Z/Z/Z").AsBool(false)
 	assert.Equal(bv, false)
 }
 
@@ -272,14 +272,14 @@ func TestMarshalJSON(t *testing.T) {
 	assert.NoError(err)
 	assert.Equal(bsOut, bsIn)
 
-	// Now create a built one.
-	builtDoc := dynaj.NewDocument()
-	err = builtDoc.SetValueAt("/a/2/x", 1)
+	// Now doc one.
+	doc := dynaj.NewDocument()
+	err = doc.SetValueAt("/a/2/x", 1)
 	assert.NoError(err)
-	err = builtDoc.SetValueAt("/a/4/y", true)
+	err = doc.SetValueAt("/a/4/y", true)
 	assert.NoError(err)
 	bsIn = []byte(`{"a":[null,null,{"x":1},null,{"y":true}]}`)
-	bsOut, err = builtDoc.MarshalJSON()
+	bsOut, err = doc.MarshalJSON()
 	assert.NoError(err)
 	assert.Equal(bsOut, bsIn)
 }

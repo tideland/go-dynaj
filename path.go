@@ -45,52 +45,36 @@ func ht(keys Keys) (Key, Keys) {
 	}
 }
 
-// isObjectOrArray checks if the node is an object or an array.
-func isObjectOrArray(node Node) bool {
-	switch node.(type) {
-	case Object, Array:
-		return true
-	default:
-		return false
-	}
-}
-
-// isValue checks if the node is a value.
-func isValue(node Node) bool {
-	switch node.(type) {
-	case Object, Array, nil:
-		return false
-	default:
-		return true
-	}
-}
-
-// valueAt returns the value at the given path.
-func valueAt(node Node, keys Keys) (Node, error) {
+// elementAt returns the element at the given path recursively
+// starting at the given element.
+func elementAt(element Element, keys Keys) (Element, error) {
 	if len(keys) == 0 {
 		// End of the path.
-		return node, nil
+		return element, nil
 	}
 	// Further access depends on part content node and type.
 	h, t := ht(keys)
 	if h == "" {
-		return node, nil
+		return element, nil
 	}
-	switch n := node.(type) {
+	switch typed := element.(type) {
 	case Object:
 		// JSON object.
-		field, ok := n[h]
+		field, ok := typed[h]
 		if !ok {
 			return nil, fmt.Errorf("invalid path %q", pathify(keys))
 		}
-		return valueAt(field, t)
+		return elementAt(field, t)
 	case Array:
 		// JSON array.
 		index, err := strconv.Atoi(h)
-		if err != nil || index >= len(n) {
+		if err != nil {
 			return nil, fmt.Errorf("invalid path %q: %v", pathify(keys), err)
 		}
-		return valueAt(n[index], t)
+		if index < 0 || index >= len(typed) {
+			return nil, fmt.Errorf("invalid path %q: index out of range", pathify(keys))
+		}
+		return elementAt(typed[index], t)
 	}
 	// Path is longer than existing node structure.
 	return nil, fmt.Errorf("path is too long")
@@ -108,6 +92,26 @@ func appendKey(path Path, key Key) Path {
 		return path + key
 	}
 	return path + Separator + key
+}
+
+// isObjectOrArray checks if the element is an object or an array.
+func isObjectOrArray(element Element) bool {
+	switch element.(type) {
+	case Object, Array:
+		return true
+	default:
+		return false
+	}
+}
+
+// isValue checks if the element is a single value.
+func isValue(element Element) bool {
+	switch element.(type) {
+	case Object, Array, nil:
+		return false
+	default:
+		return true
+	}
 }
 
 // EOF
