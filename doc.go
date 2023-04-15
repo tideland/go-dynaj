@@ -1,16 +1,16 @@
-// Tideland Go Generic JSON Processor
+// Tideland Go Dynamic JSON
 //
 // Copyright (C) 2019-2023 Frank Mueller / Tideland / Oldenburg / Germany
 //
 // All rights reserved. Use of this source code is governed
 // by the new BSD license.
 
-// Package gjp provides the generic parsing and processing of JSON
-// documents by paths. Values can be retrieved by paths like "foo/bar/3".
-// Functions with given default value help to retrieve the values in
-// a type safe way.
+// Package dynaj provides a simple dynamic handling of JSON documents.
+// Values can be retrieved, set and added by paths like "foo/bar/3".
+// Methods provide typesafe access to the values as well as flat and
+// deep processing.
 //
-//	doc, err := gjp.Parse(myDoc)
+//	doc, err := dynaj.Unmarshal(myDoc)
 //	if err != nil {
 //	    ...
 //	}
@@ -19,7 +19,7 @@
 //
 // Another way is to create an empty document with
 //
-//	doc := gjp.NewDocument()
+//	doc := dynaj.NewDocument()
 //
 // Here as well as in parsed documents values can be set with
 //
@@ -28,17 +28,24 @@
 // Additionally values of the document can be processed recursively
 // using
 //
-//	 err := doc.Process(func(pv *gjp.PathValue) error {
-//		    ...
-//	 })
+//	err := doc.Root().Process(func(pv *dynaj.PathValue) error {
+//	    ...
+//	})
 //
-// To retrieve the distance between two documents the function
-// gjp.Compare() can be used:
+// or from deeper nodes with doc.ValueAt("/a/b/3").Process(...).
+// Additionally flat processing is possible with
 //
-//	diff, err := gjp.Compare(firstDoc, secondDoc)
+//	err := doc.ValueAt("/x/y/z").Range(func(pv *dynaj.PathValue) error {
+//	    ...
+//	})
 //
-// privides a gjp.Diff instance which helps to compare individual
+// To retrieve the differences between two documents the function
+// dynaj.Compare() can be used:
+//
+//	diff, err := dynaj.Compare(firstDoc, secondDoc)
+//
+// privides a dynaj.Diff instance which helps to compare individual
 // paths of the two document.
-package gjp // import "tideland.dev/go/text/gjp"
+package dynaj // import "tideland.dev/go/text/dynaj"
 
 // EOF

@@ -1,11 +1,11 @@
-// Tideland Go Generic JSON Processor - Unit Tests
+// Tideland Go Dynamic JSON - Unit Tests
 //
 // Copyright (C) 2019-2023 Frank Mueller / Tideland / Oldenburg / Germany
 //
 // All rights reserved. Use of this source code is governed
 // by the new BSD license.
 
-package gjp_test
+package dynaj_test
 
 //--------------------
 // IMPORTS
@@ -18,7 +18,7 @@ import (
 
 	"tideland.dev/go/audit/asserts"
 
-	"tideland.dev/go/gjp"
+	"tideland.dev/go/dynaj"
 )
 
 //--------------------
@@ -31,12 +31,12 @@ func TestProcess(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *gjp.PathValue) error {
+	processor := func(pv *dynaj.PathValue) error {
 		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 
 	// Verify iteration of all nodes.
@@ -48,7 +48,7 @@ func TestProcess(t *testing.T) {
 	assert.Contains(`"/B/1/S/2" = "white"`, values)
 
 	// Verifiy processing error.
-	processor = func(pv *gjp.PathValue) error {
+	processor = func(pv *dynaj.PathValue) error {
 		return errors.New("ouch")
 	}
 	err = doc.Root().Process(processor)
@@ -62,12 +62,12 @@ func TestValueAtProcess(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *gjp.PathValue) error {
+	processor := func(pv *dynaj.PathValue) error {
 		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 
 	// Verify iteration of all nodes.
@@ -89,7 +89,7 @@ func TestValueAtProcess(t *testing.T) {
 	assert.ErrorContains(err, "invalid path")
 
 	// Verify procesing error.
-	processor = func(pv *gjp.PathValue) error {
+	processor = func(pv *dynaj.PathValue) error {
 		return errors.New("ouch")
 	}
 	err = doc.ValueAt("/A").Process(processor)
@@ -102,12 +102,12 @@ func TestRange(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *gjp.PathValue) error {
+	processor := func(pv *dynaj.PathValue) error {
 		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 
 	// Verify range of object.
@@ -143,7 +143,7 @@ func TestRange(t *testing.T) {
 	assert.ErrorContains(err, "is object or array")
 
 	// Verify procesing error.
-	processor = func(pv *gjp.PathValue) error {
+	processor = func(pv *dynaj.PathValue) error {
 		return errors.New("ouch")
 	}
 	err = doc.ValueAt("/A").Range(processor)
@@ -155,7 +155,7 @@ func TestRootQuery(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	pvs, err := doc.Root().Query("Z/*")
 	assert.NoError(err)
@@ -194,7 +194,7 @@ func TestValueAtQuery(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	pvs, err := doc.ValueAt("/B/0/D").Query("Z/*")
 	assert.NoError(err)
