@@ -38,7 +38,7 @@ err := doc.SetValueAt("/a/b/3/c", 4711)
 Additionally values of the document can be processed recursively using
 
 ```go
-err := doc.Root().Process(func(pv *dynaj.PathValue) error {
+err := doc.Root().Process(func(nodes *dynaj.Node) error {
     ...
 })
 ```
@@ -47,7 +47,7 @@ or from deeper nodes with `doc.ValueAt("/a/b/3").Process(...)`.
 Additionally flat processing is possible with
 
 ```go
-err := doc.ValueAt("/x/y/z").Range(func(pv *dynaj.PathValue) error {
+err := doc.ValueAt("/x/y/z").Range(func(nodes *dynaj.Node) error {
     ...
 })
 ````

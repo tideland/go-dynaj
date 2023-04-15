@@ -28,14 +28,14 @@
 // Additionally values of the document can be processed recursively
 // using
 //
-//	err := doc.Root().Process(func(pv *dynaj.PathValue) error {
+//	err := doc.Root().Process(func(node *dynaj.Node) error {
 //	    ...
 //	})
 //
 // or from deeper nodes with doc.ValueAt("/a/b/3").Process(...).
 // Additionally flat processing is possible with
 //
-//	err := doc.ValueAt("/x/y/z").Range(func(pv *dynaj.PathValue) error {
+//	err := doc.ValueAt("/x/y/z").Range(func(node *dynaj.Node) error {
 //	    ...
 //	})
 //

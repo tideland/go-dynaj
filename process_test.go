@@ -31,8 +31,8 @@ func TestProcess(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *dynaj.PathValue) error {
-		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
+	processor := func(node *dynaj.Node) error {
+		value := fmt.Sprintf("%q = %q", node.Path(), node.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
@@ -48,7 +48,7 @@ func TestProcess(t *testing.T) {
 	assert.Contains(`"/B/1/S/2" = "white"`, values)
 
 	// Verifiy processing error.
-	processor = func(pv *dynaj.PathValue) error {
+	processor = func(node *dynaj.Node) error {
 		return errors.New("ouch")
 	}
 	err = doc.Root().Process(processor)
@@ -62,8 +62,8 @@ func TestValueAtProcess(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *dynaj.PathValue) error {
-		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
+	processor := func(node *dynaj.Node) error {
+		value := fmt.Sprintf("%q = %q", node.Path(), node.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
@@ -71,28 +71,28 @@ func TestValueAtProcess(t *testing.T) {
 	assert.NoError(err)
 
 	// Verify iteration of all nodes.
-	err = doc.ValueAt("/B/0/D").Process(processor)
+	err = doc.NodeAt("/B/0/D").Process(processor)
 	assert.NoError(err)
 	assert.Length(values, 2)
 	assert.Contains(`"/B/0/D/A" = "Level Three - 0"`, values)
 	assert.Contains(`"/B/0/D/B" = "10.1"`, values)
 
 	values = []string{}
-	err = doc.ValueAt("/B/1").Process(processor)
+	err = doc.NodeAt("/B/1").Process(processor)
 	assert.NoError(err)
 	assert.Length(values, 8)
 	assert.Contains(`"/B/1/S/2" = "white"`, values)
 	assert.Contains(`"/B/1/B" = "200"`, values)
 
 	// Verifiy iteration of non-existing path.
-	err = doc.ValueAt("/B/3").Process(processor)
+	err = doc.NodeAt("/B/3").Process(processor)
 	assert.ErrorContains(err, "invalid path")
 
 	// Verify procesing error.
-	processor = func(pv *dynaj.PathValue) error {
+	processor = func(node *dynaj.Node) error {
 		return errors.New("ouch")
 	}
-	err = doc.ValueAt("/A").Process(processor)
+	err = doc.NodeAt("/A").Process(processor)
 	assert.ErrorContains(err, "ouch")
 }
 
@@ -102,8 +102,8 @@ func TestRange(t *testing.T) {
 	bs, _ := createDocument(assert)
 
 	values := []string{}
-	processor := func(pv *dynaj.PathValue) error {
-		value := fmt.Sprintf("%q = %q", pv.Path(), pv.AsString("<undefined>"))
+	processor := func(node *dynaj.Node) error {
+		value := fmt.Sprintf("%q = %q", node.Path(), node.AsString("<undefined>"))
 		values = append(values, value)
 		return nil
 	}
@@ -112,7 +112,7 @@ func TestRange(t *testing.T) {
 
 	// Verify range of object.
 	values = []string{}
-	err = doc.ValueAt("/B/0/D").Range(processor)
+	err = doc.NodeAt("/B/0/D").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 2)
 	assert.Contains(`"/B/0/D/A" = "Level Three - 0"`, values)
@@ -120,7 +120,7 @@ func TestRange(t *testing.T) {
 
 	// Verify range of array.
 	values = []string{}
-	err = doc.ValueAt("/B/1/S").Range(processor)
+	err = doc.NodeAt("/B/1/S").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 3)
 	assert.Contains(`"/B/1/S/0" = "orange"`, values)
@@ -129,24 +129,24 @@ func TestRange(t *testing.T) {
 
 	// Verify range of value.
 	values = []string{}
-	err = doc.ValueAt("/A").Range(processor)
+	err = doc.NodeAt("/A").Range(processor)
 	assert.NoError(err)
 	assert.Length(values, 1)
 	assert.Contains(`"/A" = "Level One"`, values)
 
 	// Verify range of non-existing path.
-	err = doc.ValueAt("/B/0/D/X").Range(processor)
+	err = doc.NodeAt("/B/0/D/X").Range(processor)
 	assert.ErrorContains(err, "invalid path")
 
 	// Verify range of mixed types.
-	err = doc.ValueAt("/B/0").Range(processor)
+	err = doc.NodeAt("/B/0").Range(processor)
 	assert.ErrorContains(err, "is object or array")
 
 	// Verify procesing error.
-	processor = func(pv *dynaj.PathValue) error {
+	processor = func(node *dynaj.Node) error {
 		return errors.New("ouch")
 	}
-	err = doc.ValueAt("/A").Range(processor)
+	err = doc.NodeAt("/A").Range(processor)
 	assert.ErrorContains(err, "ouch")
 }
 
@@ -157,36 +157,36 @@ func TestRootQuery(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	pvs, err := doc.Root().Query("Z/*")
+	nodes, err := doc.Root().Query("Z/*")
 	assert.NoError(err)
-	assert.Length(pvs, 0)
-	pvs, err = doc.Root().Query("*")
+	assert.Length(nodes, 0)
+	nodes, err = doc.Root().Query("*")
 	assert.NoError(err)
-	assert.Length(pvs, 27)
-	pvs, err = doc.Root().Query("/A")
+	assert.Length(nodes, 27)
+	nodes, err = doc.Root().Query("/A")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
-	pvs, err = doc.Root().Query("/B/*")
+	assert.Length(nodes, 1)
+	nodes, err = doc.Root().Query("/B/*")
 	assert.NoError(err)
-	assert.Length(pvs, 24)
-	pvs, err = doc.Root().Query("/B/[01]/*")
+	assert.Length(nodes, 24)
+	nodes, err = doc.Root().Query("/B/[01]/*")
 	assert.NoError(err)
-	assert.Length(pvs, 18)
-	pvs, err = doc.Root().Query("/B/[01]/*A")
+	assert.Length(nodes, 18)
+	nodes, err = doc.Root().Query("/B/[01]/*A")
 	assert.NoError(err)
-	assert.Length(pvs, 4)
-	pvs, err = doc.Root().Query("*/S/*")
+	assert.Length(nodes, 4)
+	nodes, err = doc.Root().Query("*/S/*")
 	assert.NoError(err)
-	assert.Length(pvs, 8)
-	pvs, err = doc.Root().Query("*/S/3")
+	assert.Length(nodes, 8)
+	nodes, err = doc.Root().Query("*/S/3")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
+	assert.Length(nodes, 1)
 
 	// Verify the content
-	pvs, err = doc.Root().Query("/A")
+	nodes, err = doc.Root().Query("/A")
 	assert.NoError(err)
-	assert.Equal(pvs[0].Path(), "/A")
-	assert.Equal(pvs[0].AsString(""), "Level One")
+	assert.Equal(nodes[0].Path(), "/A")
+	assert.Equal(nodes[0].AsString(""), "Level One")
 }
 
 // TestValueAtQuery tests querying a document starting at a deeper node.
@@ -196,32 +196,32 @@ func TestValueAtQuery(t *testing.T) {
 
 	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
-	pvs, err := doc.ValueAt("/B/0/D").Query("Z/*")
+	nodes, err := doc.NodeAt("/B/0/D").Query("Z/*")
 	assert.NoError(err)
-	assert.Length(pvs, 0)
-	pvs, err = doc.ValueAt("/B/0/D").Query("*")
+	assert.Length(nodes, 0)
+	nodes, err = doc.NodeAt("/B/0/D").Query("*")
 	assert.NoError(err)
-	assert.Length(pvs, 2)
-	pvs, err = doc.ValueAt("/B/0/D").Query("A")
+	assert.Length(nodes, 2)
+	nodes, err = doc.NodeAt("/B/0/D").Query("A")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
-	pvs, err = doc.ValueAt("/B/0/D").Query("B")
+	assert.Length(nodes, 1)
+	nodes, err = doc.NodeAt("/B/0/D").Query("B")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
-	pvs, err = doc.ValueAt("/B/0/D").Query("C")
+	assert.Length(nodes, 1)
+	nodes, err = doc.NodeAt("/B/0/D").Query("C")
 	assert.NoError(err)
-	assert.Length(pvs, 0)
-	pvs, err = doc.ValueAt("/B/1").Query("S/*")
+	assert.Length(nodes, 0)
+	nodes, err = doc.NodeAt("/B/1").Query("S/*")
 	assert.NoError(err)
-	assert.Length(pvs, 3)
-	pvs, err = doc.ValueAt("/B/1").Query("S/2")
+	assert.Length(nodes, 3)
+	nodes, err = doc.NodeAt("/B/1").Query("S/2")
 	assert.NoError(err)
-	assert.Length(pvs, 1)
+	assert.Length(nodes, 1)
 
 	// Verify non-existing path.
-	pvs, err = doc.ValueAt("Z/Z/Z").Query("/A")
+	nodes, err = doc.NodeAt("Z/Z/Z").Query("/A")
 	assert.ErrorContains(err, "invalid path")
-	assert.Length(pvs, 0)
+	assert.Length(nodes, 0)
 }
 
 // EOF

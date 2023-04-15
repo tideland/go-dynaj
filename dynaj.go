@@ -34,16 +34,16 @@ type Key = string
 // Keys represents a list of keys.
 type Keys = []Key
 
-// Node may be a JSON object, array or value.
-type Node = any
+// Element represents a JSON element, i.e. a simple value, an object or an array.
+type Element = any
+
+// Value represents a simple JSON value.
+type Value = any
 
 // Object represents a JSON object.
 type Object = map[string]any
 
 // Array represents a JSON array.
 type Array = []any
-
-// Value contains one JSON value.
-type Value = any
 
 // EOF
