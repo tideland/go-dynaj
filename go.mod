@@ -1,4 +1,4 @@
-module tideland.dev/go/gjp
+module tideland.dev/go/dynaj
 
 go 1.19
 

@@ -1,11 +1,11 @@
-// Tideland Go Generic JSON Processor - Unit Tests
+// Tideland Go Dynamic JSON - Unit Tests
 //
 // Copyright (C) 2019-2023 Frank Mueller / Tideland / Oldenburg / Germany
 //
 // All rights reserved. Use of this source code is governed
 // by the new BSD license.
 
-package gjp_test
+package dynaj_test
 
 //--------------------
 // IMPORTS
@@ -18,7 +18,7 @@ import (
 
 	"tideland.dev/go/audit/asserts"
 
-	"tideland.dev/go/gjp"
+	"tideland.dev/go/dynaj"
 )
 
 //--------------------
@@ -30,7 +30,7 @@ func TestBuilding(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 
 	// Most simple document.
-	doc := gjp.NewDocument()
+	doc := dynaj.NewDocument()
 	err := doc.SetValueAt("", "foo")
 	assert.NoError(err)
 
@@ -38,7 +38,7 @@ func TestBuilding(t *testing.T) {
 	assert.Equal(sv, "foo")
 
 	// Positive cases.
-	doc = gjp.NewDocument()
+	doc = dynaj.NewDocument()
 	err = doc.SetValueAt("/a/b/x", 1)
 	assert.NoError(err)
 	err = doc.SetValueAt("/a/b/y", true)
@@ -98,7 +98,7 @@ func TestParseError(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs := []byte(`abc{def`)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.Nil(doc)
 	assert.ErrorContains(err, "cannot unmarshal document")
 }
@@ -108,7 +108,7 @@ func TestClear(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	doc.Clear()
 	err = doc.SetValueAt("/", "foo")
@@ -122,7 +122,7 @@ func TestLength(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	l := doc.Length("X")
 	assert.Equal(l, -1)
@@ -145,7 +145,7 @@ func TestNotFound(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 
 	// Check if is undefined.
@@ -160,7 +160,7 @@ func TestString(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	s := doc.String()
 	assert.Equal(s, string(bs))
@@ -171,7 +171,7 @@ func TestAsString(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	sv := doc.ValueAt("A").AsString("default")
 	assert.Equal(sv, "Level One")
@@ -200,7 +200,7 @@ func TestAsInt(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	iv := doc.ValueAt("A").AsInt(-1)
 	assert.Equal(iv, -1)
@@ -221,7 +221,7 @@ func TestAsFloat64(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	fv := doc.ValueAt("A").AsFloat64(-1.0)
 	assert.Equal(fv, -1.0)
@@ -244,7 +244,7 @@ func TestAsBool(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 	bs, _ := createDocument(assert)
 
-	doc, err := gjp.Unmarshal(bs)
+	doc, err := dynaj.Unmarshal(bs)
 	assert.NoError(err)
 	bv := doc.ValueAt("A").AsBool(false)
 	assert.Equal(bv, false)
@@ -266,14 +266,14 @@ func TestMarshalJSON(t *testing.T) {
 
 	// Compare input and output.
 	bsIn, _ := createDocument(assert)
-	parsedDoc, err := gjp.Unmarshal(bsIn)
+	parsedDoc, err := dynaj.Unmarshal(bsIn)
 	assert.NoError(err)
 	bsOut, err := parsedDoc.MarshalJSON()
 	assert.NoError(err)
 	assert.Equal(bsOut, bsIn)
 
 	// Now create a built one.
-	builtDoc := gjp.NewDocument()
+	builtDoc := dynaj.NewDocument()
 	err = builtDoc.SetValueAt("/a/2/x", 1)
 	assert.NoError(err)
 	err = builtDoc.SetValueAt("/a/4/y", true)

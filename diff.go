@@ -1,11 +1,11 @@
-// Tideland Go Generic JSON Processor
+// Tideland Go Dynamic JSON
 //
 // Copyright (C) 2019-2023 Frank Mueller / Tideland / Oldenburg / Germany
 //
 // All rights reserved. Use of this source code is governed
 // by the new BSD license.
 
-package gjp // import "tideland.dev/go/gjp"
+package dynaj // import "tideland.dev/go/dynaj"
 
 //--------------------
 // DIFFERENCE

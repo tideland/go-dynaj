@@ -5,7 +5,7 @@
 // All rights reserved. Use of this source code is governed
 // by the new BSD license.
 
-package gjp // import "tideland.dev/go/gjp"
+package dynaj // import "tideland.dev/go/dynaj"
 
 //--------------------
 // IMPORTS
