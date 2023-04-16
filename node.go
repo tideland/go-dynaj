@@ -185,6 +185,33 @@ func (node *Node) SplitPath() Keys {
 	return splitPath(node.path)
 }
 
+// NodeAt returns the node at the passed path.
+func (node *Node) NodeAt(path Path) *Node {
+	if node.IsUndefined() {
+		return &Node{
+			path:  path,
+			value: nil,
+		}
+	}
+	if node.IsValue() {
+		return &Node{
+			path:  path,
+			value: node.value,
+		}
+	}
+	// Navigate downstream.
+	nodeAt := &Node{
+		path: joinPaths(node.path, path),
+	}
+	value, err := elementAt(node.value, splitPath(path))
+	if err != nil {
+		nodeAt.err = fmt.Errorf("invalid path %q: %v", path, err)
+	} else {
+		nodeAt.value = value
+	}
+	return nodeAt
+}
+
 // Process iterates over the node and all its subnodes and
 // processes them with the passed processor function.
 func (node *Node) Process(process Processor) error {
