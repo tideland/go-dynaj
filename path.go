@@ -33,6 +33,15 @@ func splitPath(path Path) Keys {
 	return out
 }
 
+// joinPaths joins the given paths into one.
+func joinPaths(paths ...Path) Path {
+	out := Keys{}
+	for _, path := range paths {
+		out = append(out, splitPath(path)...)
+	}
+	return pathify(out)
+}
+
 // ht retrieves head and tail from a list of keys.
 func ht(keys Keys) (Key, Keys) {
 	switch len(keys) {

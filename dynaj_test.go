@@ -25,11 +25,12 @@ import (
 // TESTS
 //--------------------
 
-// TestBuilding tests the creation of documents.
-func TestBuilding(t *testing.T) {
+// TestBuildTypes tests the creation of documents with different
+// root types.
+func TestBuildTypes(t *testing.T) {
 	assert := asserts.NewTesting(t, asserts.FailStop)
 
-	// Most simple document.
+	// Just one value.
 	doc := dynaj.NewDocument()
 	err := doc.SetValueAt("", "foo")
 	assert.NoError(err)
@@ -37,9 +38,34 @@ func TestBuilding(t *testing.T) {
 	sv := doc.NodeAt("").AsString("bar")
 	assert.Equal(sv, "foo")
 
-	// Positive cases.
+	// Now an object.
 	doc = dynaj.NewDocument()
-	err = doc.SetValueAt("/a/b/x", 1)
+	err = doc.SetValueAt("/a", 1)
+	assert.NoError(err)
+
+	nv := doc.NodeAt("")
+	assert.True(nv.IsObject())
+	iv := doc.NodeAt("a").AsInt(-1)
+	assert.Equal(iv, 1)
+
+	// And finally an array.
+	doc = dynaj.NewDocument()
+	err = doc.SetValueAt("/0", 1)
+	assert.NoError(err)
+
+	nv = doc.NodeAt("")
+	assert.True(nv.IsArray())
+	iv = doc.NodeAt("0").AsInt(-1)
+	assert.Equal(iv, 1)
+}
+
+// TestBuilding tests the creation of documents.
+func TestBuilding(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+
+	// Positive cases.
+	doc := dynaj.NewDocument()
+	err := doc.SetValueAt("/a/b/x", 1)
 	assert.NoError(err)
 	err = doc.SetValueAt("/a/b/y", true)
 	assert.NoError(err)
@@ -54,14 +80,18 @@ func TestBuilding(t *testing.T) {
 
 	iv := doc.NodeAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 1)
+	iv = doc.NodeAt("a").NodeAt("b").NodeAt("x").AsInt(0)
+	assert.Equal(iv, 1)
+	nv := doc.NodeAt("a").NodeAt("b").NodeAt("x")
+	assert.Equal(nv.Path(), "/a/b/x")
 	bv := doc.NodeAt("a/b/y").AsBool(false)
 	assert.Equal(bv, true)
-	sv = doc.NodeAt("a/c").AsString("")
+	sv := doc.NodeAt("a/c").AsString("")
 	assert.Equal(sv, "quick brown fox")
 	fv := doc.NodeAt("a/d/0/z").AsFloat64(8.15)
 	assert.Equal(fv, 47.11)
-	nv := doc.NodeAt("a/d/1/z").IsUndefined()
-	assert.True(nv)
+	nvt := doc.NodeAt("a/d/1/z").IsUndefined()
+	assert.True(nvt)
 
 	nodes, err := doc.Root().Query("*x")
 	assert.NoError(err)
