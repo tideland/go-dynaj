@@ -42,8 +42,8 @@ func joinPaths(paths ...Path) Path {
 	return pathify(out)
 }
 
-// ht retrieves head and tail from a list of keys.
-func ht(keys Keys) (Key, Keys) {
+// headTail retrieves the head and the tail key from a list of keys.
+func headTail(keys Keys) (Key, Keys) {
 	switch len(keys) {
 	case 0:
 		return "", Keys{}
@@ -54,6 +54,15 @@ func ht(keys Keys) (Key, Keys) {
 	}
 }
 
+// asIndex converts the given key into an index.
+func asIndex(key Key) (int, bool) {
+	index, err := strconv.Atoi(key)
+	if err != nil {
+		return 0, false
+	}
+	return index, true
+}
+
 // elementAt returns the element at the given path recursively
 // starting at the given element.
 func elementAt(element Element, keys Keys) (Element, error) {
@@ -62,7 +71,7 @@ func elementAt(element Element, keys Keys) (Element, error) {
 		return element, nil
 	}
 	// Further access depends on part content node and type.
-	h, t := ht(keys)
+	h, t := headTail(keys)
 	if h == "" {
 		return element, nil
 	}
@@ -76,9 +85,9 @@ func elementAt(element Element, keys Keys) (Element, error) {
 		return elementAt(field, t)
 	case Array:
 		// JSON array.
-		index, err := strconv.Atoi(h)
-		if err != nil {
-			return nil, fmt.Errorf("invalid path %q: %v", pathify(keys), err)
+		index, ok := asIndex(h)
+		if !ok {
+			return nil, fmt.Errorf("invalid path %q: no index", pathify(keys))
 		}
 		if index < 0 || index >= len(typed) {
 			return nil, fmt.Errorf("invalid path %q: index out of range", pathify(keys))
@@ -86,7 +95,7 @@ func elementAt(element Element, keys Keys) (Element, error) {
 		return elementAt(typed[index], t)
 	}
 	// Path is longer than existing node structure.
-	return nil, fmt.Errorf("path is too long")
+	return nil, fmt.Errorf("key or index not found")
 }
 
 // pathify creates a path out of keys.
