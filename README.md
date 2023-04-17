@@ -4,7 +4,7 @@
 [![GitHub license](https://img.shields.io/badge/license-New%20BSD-blue.svg)](https://raw.githubusercontent.com/tideland/go-dynaj/master/LICENSE)
 [![Go Module](https://img.shields.io/github/go-mod/go-version/tideland/go-dynaj)](https://github.com/tideland/go-dynaj/blob/master/go.mod)
 [![GoDoc](https://godoc.org/tideland.dev/go/dynaj?status.svg)](https://pkg.go.dev/mod/tideland.dev/go/dynaj?tab=packages)
-[![Workflow](https://img.shields.io/github/workflow/status/tideland/go-dynaj/Go)](https://github.com/tideland/go-dynaj/actions/)
+[![Workflow](https://github.com/tideland/go-dynaj/actions/workflows/build.yml/badge.svg)](https://github.com/tideland/go-dynaj/actions/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tideland/go-dynaj)](https://goreportcard.com/report/tideland.dev/go/dynaj)
 
 ## Description
