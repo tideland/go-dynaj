@@ -84,6 +84,19 @@ func (d *Document) DeleteValueAt(path Path) error {
 	return nil
 }
 
+// DeleteElementAt deletes the element at the given path. It cuts the
+// element out of the document tree, regardless if it is a value or
+// a container element.
+func (d *Document) DeleteElementAt(path Path) error {
+	keys := splitPath(path)
+	root, err := deleteElement(d.root, keys, true)
+	if err != nil {
+		return err
+	}
+	d.root = root
+	return nil
+}
+
 // NodeAt returns the addressed value.
 func (d *Document) NodeAt(path Path) *Node {
 	node := &Node{

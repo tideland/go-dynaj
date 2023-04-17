@@ -186,6 +186,69 @@ func TestDeleteValueAt(t *testing.T) {
 	assert.ErrorContains(err, "invalid path")
 }
 
+// TestDeleteElementAt tests the deletion of elements.
+func TestDeleteElementAt(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+
+	// Create a document.
+	doc := dynaj.NewDocument()
+	err := doc.SetValueAt("/obj/a", 1)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/b", 2)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/c", 3)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/x", "x")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/y", "y")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/z", "z")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/arr/0", "foo")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/1", "bar")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/2", "baz")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/val", true)
+	assert.NoError(err)
+
+	// Delete elements.
+	err = doc.DeleteElementAt("/obj/d/x")
+	assert.NoError(err)
+	node := doc.NodeAt("/obj/d/x")
+	assert.ErrorContains(node.Err(), "invalid path")
+	err = doc.DeleteElementAt("/obj/d")
+	assert.NoError(err)
+	node = doc.NodeAt("/obj/d/y")
+	assert.ErrorContains(node.Err(), "invalid path")
+	err = doc.DeleteElementAt("/obj")
+	assert.NoError(err)
+	node = doc.NodeAt("/obj")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	err = doc.DeleteElementAt("/arr")
+	assert.NoError(err)
+	node = doc.NodeAt("/arr")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	err = doc.DeleteElementAt("/val")
+	assert.NoError(err)
+	node = doc.NodeAt("/val")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	// Provoke errors.
+	err = doc.SetValueAt("/obj/a", 1)
+	assert.NoError(err)
+	err = doc.DeleteElementAt("/obj/a/not_found")
+	assert.ErrorContains(err, "path too long")
+
+	err = doc.DeleteElementAt("/deep/not_found")
+	assert.ErrorContains(err, "invalid path")
+}
+
 // TestParseError tests the returned error in case of
 // an invalid document.
 func TestParseError(t *testing.T) {
