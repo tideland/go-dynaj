@@ -31,19 +31,19 @@ type Processor func(n *Node) error
 
 // Node is the combination of path and its value.
 type Node struct {
-	path  Path
-	value Value
-	err   error
+	path    Path
+	element Element
+	err     error
 }
 
 // IsUndefined returns true if this value is undefined.
 func (node *Node) IsUndefined() bool {
-	return node.value == nil && node.err == nil
+	return node.element == nil && node.err == nil
 }
 
 // IsValue returns true if this node is a simple value.
 func (node *Node) IsValue() bool {
-	switch node.value.(type) {
+	switch node.element.(type) {
 	case Object, Array:
 		return false
 	default:
@@ -53,13 +53,13 @@ func (node *Node) IsValue() bool {
 
 // IsObject returns true if this node is an object.
 func (node *Node) IsObject() bool {
-	_, ok := node.value.(Object)
+	_, ok := node.element.(Object)
 	return ok
 }
 
 // IsArray returns true if this node is an array.
 func (node *Node) IsArray() bool {
-	_, ok := node.value.(Array)
+	_, ok := node.element.(Array)
 	return ok
 }
 
@@ -78,7 +78,7 @@ func (node *Node) AsString(dv string) string {
 	if node.IsUndefined() {
 		return dv
 	}
-	switch tv := node.value.(type) {
+	switch tv := node.element.(type) {
 	case string:
 		return tv
 	case int:
@@ -96,7 +96,7 @@ func (node *Node) AsInt(dv int) int {
 	if node.IsUndefined() {
 		return dv
 	}
-	switch tv := node.value.(type) {
+	switch tv := node.element.(type) {
 	case string:
 		i, err := strconv.Atoi(tv)
 		if err != nil {
@@ -121,7 +121,7 @@ func (node *Node) AsFloat64(dv float64) float64 {
 	if node.IsUndefined() {
 		return dv
 	}
-	switch tv := node.value.(type) {
+	switch tv := node.element.(type) {
 	case string:
 		f, err := strconv.ParseFloat(tv, 64)
 		if err != nil {
@@ -146,7 +146,7 @@ func (node *Node) AsBool(dv bool) bool {
 	if node.IsUndefined() {
 		return dv
 	}
-	switch tv := node.value.(type) {
+	switch tv := node.element.(type) {
 	case string:
 		b, err := strconv.ParseBool(tv)
 		if err != nil {
@@ -171,7 +171,7 @@ func (node *Node) Equals(other *Node) bool {
 	case node.IsUndefined() || other.IsUndefined():
 		return false
 	default:
-		return reflect.DeepEqual(node.value, other.value)
+		return reflect.DeepEqual(node.element, other.element)
 	}
 }
 
@@ -189,25 +189,25 @@ func (node *Node) SplitPath() Keys {
 func (node *Node) NodeAt(path Path) *Node {
 	if node.IsUndefined() {
 		return &Node{
-			path:  path,
-			value: nil,
+			path:    path,
+			element: nil,
 		}
 	}
 	if node.IsValue() {
 		return &Node{
-			path:  path,
-			value: node.value,
+			path:    path,
+			element: node.element,
 		}
 	}
 	// Navigate downstream.
 	nodeAt := &Node{
 		path: joinPaths(node.path, path),
 	}
-	value, err := elementAt(node.value, splitPath(path))
+	value, err := elementAt(node.element, splitPath(path))
 	if err != nil {
 		nodeAt.err = fmt.Errorf("invalid path %q: %v", path, err)
 	} else {
-		nodeAt.value = value
+		nodeAt.element = value
 	}
 	return nodeAt
 }
@@ -218,20 +218,20 @@ func (node *Node) Process(process Processor) error {
 	if node.err != nil {
 		return node.err
 	}
-	switch typed := node.value.(type) {
+	switch typed := node.element.(type) {
 	case Object:
 		// A JSON object.
 		if len(typed) == 0 {
 			return process(&Node{
-				path:  node.path,
-				value: Object{},
+				path:    node.path,
+				element: Object{},
 			})
 		}
 		for key, subvalue := range typed {
 			subpath := appendKey(node.path, key)
 			subnode := &Node{
-				path:  subpath,
-				value: subvalue,
+				path:    subpath,
+				element: subvalue,
 			}
 			if err := subnode.Process(process); err != nil {
 				return fmt.Errorf("cannot process %q: %v", subpath, err)
@@ -241,15 +241,15 @@ func (node *Node) Process(process Processor) error {
 		// A JSON array.
 		if len(typed) == 0 {
 			return process(&Node{
-				path:  node.path,
-				value: Array{},
+				path:    node.path,
+				element: Array{},
 			})
 		}
 		for idx, subvalue := range typed {
 			subpath := appendKey(node.path, strconv.Itoa(idx))
 			subnode := &Node{
-				path:  subpath,
-				value: subvalue,
+				path:    subpath,
+				element: subvalue,
 			}
 			if err := subnode.Process(process); err != nil {
 				return fmt.Errorf("cannot process %q: %v", subpath, err)
@@ -258,8 +258,8 @@ func (node *Node) Process(process Processor) error {
 	default:
 		// A single value at the end.
 		err := process(&Node{
-			path:  node.path,
-			value: typed,
+			path:    node.path,
+			element: typed,
 		})
 		if err != nil {
 			return fmt.Errorf("cannot process %q: %v", node.path, err)
@@ -275,7 +275,7 @@ func (node *Node) Range(process Processor) error {
 	if node.err != nil {
 		return node.err
 	}
-	switch typed := node.value.(type) {
+	switch typed := node.element.(type) {
 	case Object:
 		// A JSON object.
 		for key := range typed {
@@ -284,8 +284,8 @@ func (node *Node) Range(process Processor) error {
 				return fmt.Errorf("cannot process %q: is object or array", keypath)
 			}
 			err := process(&Node{
-				path:  keypath,
-				value: typed[key],
+				path:    keypath,
+				element: typed[key],
 			})
 			if err != nil {
 				return fmt.Errorf("cannot process %q: %v", keypath, err)
@@ -299,8 +299,8 @@ func (node *Node) Range(process Processor) error {
 				return fmt.Errorf("cannot process %q: is object or array", idxpath)
 			}
 			err := process(&Node{
-				path:  idxpath,
-				value: typed[idx],
+				path:    idxpath,
+				element: typed[idx],
 			})
 			if err != nil {
 				return fmt.Errorf("cannot process %q: %v", idxpath, err)
@@ -309,8 +309,8 @@ func (node *Node) Range(process Processor) error {
 	default:
 		// A single value at the end.
 		err := process(&Node{
-			path:  node.path,
-			value: typed,
+			path:    node.path,
+			element: typed,
 		})
 		if err != nil {
 			return fmt.Errorf("cannot process %q: %v", node.path, err)
@@ -327,8 +327,8 @@ func (node *Node) Query(pattern string) (Nodes, error) {
 		trimmedPath := strings.TrimPrefix(pnode.path, node.path+Separator)
 		if matcher.Matches(pattern, trimmedPath, false) {
 			nodes = append(nodes, &Node{
-				path:  pnode.path,
-				value: pnode.value,
+				path:    pnode.path,
+				element: pnode.element,
 			})
 		}
 		return nil
@@ -344,7 +344,7 @@ func (node *Node) String() string {
 	if node.IsError() {
 		return fmt.Sprintf("error: %v", node.err)
 	}
-	return fmt.Sprintf("%v", node.value)
+	return fmt.Sprintf("%v", node.element)
 }
 
 // Nodes contains a list of paths and their value.

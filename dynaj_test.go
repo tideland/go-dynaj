@@ -69,6 +69,8 @@ func TestBuilding(t *testing.T) {
 	assert.NoError(err)
 	err = doc.SetValueAt("/a/b/y", true)
 	assert.NoError(err)
+	err = doc.SetValueAt("/a/b/0", "foo")
+	assert.ErrorContains(err, "cannot insert value")
 	err = doc.SetValueAt("/a/c", "quick brown fox")
 	assert.NoError(err)
 	err = doc.SetValueAt("/a/d/0/z", 47.11)
@@ -120,6 +122,131 @@ func TestBuilding(t *testing.T) {
 	assert.NoError(err)
 	iv = doc.NodeAt("a/b/x").AsInt(0)
 	assert.Equal(iv, 2)
+}
+
+// TestDeleteValueAt tests the deletion of values.
+func TestDeleteValueAt(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+
+	// Create a document.
+	doc := dynaj.NewDocument()
+	err := doc.SetValueAt("/obj/a", 1)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/b", 2)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/c", 3)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/x", "x")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/y", "y")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/z", "z")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/arr/0", "foo")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/1", "bar")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/2", "baz")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/val", true)
+	assert.NoError(err)
+
+	// Delete values, object removes key, array shifts.
+	err = doc.DeleteValueAt("/obj/b")
+	assert.NoError(err)
+	node := doc.NodeAt("/obj/b")
+	assert.True(node.IsError())
+	assert.ErrorContains(node.Err(), "invalid path")
+	err = doc.DeleteValueAt("/obj/d/z")
+	assert.NoError(err)
+
+	err = doc.DeleteValueAt("/arr/1")
+	assert.NoError(err)
+	node = doc.NodeAt("/arr/1")
+	assert.Equal(node.AsString("ouch"), "baz")
+	node = doc.NodeAt("/arr/2")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	err = doc.DeleteValueAt("/val")
+	assert.NoError(err)
+	node = doc.NodeAt("/val")
+	assert.True(node.IsError())
+	err = doc.DeleteValueAt("/not_found")
+	assert.NoError(err)
+
+	// Provoke errors.
+	err = doc.DeleteValueAt("/obj/a/not_found")
+	assert.ErrorContains(err, "path too long")
+	err = doc.DeleteValueAt("/obj/d")
+	assert.ErrorContains(err, "is no value")
+
+	err = doc.DeleteValueAt("/deep/not_found")
+	assert.ErrorContains(err, "invalid path")
+}
+
+// TestDeleteElementAt tests the deletion of elements.
+func TestDeleteElementAt(t *testing.T) {
+	assert := asserts.NewTesting(t, asserts.FailStop)
+
+	// Create a document.
+	doc := dynaj.NewDocument()
+	err := doc.SetValueAt("/obj/a", 1)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/b", 2)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/c", 3)
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/x", "x")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/y", "y")
+	assert.NoError(err)
+	err = doc.SetValueAt("/obj/d/z", "z")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/arr/0", "foo")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/1", "bar")
+	assert.NoError(err)
+	err = doc.SetValueAt("/arr/2", "baz")
+	assert.NoError(err)
+
+	err = doc.SetValueAt("/val", true)
+	assert.NoError(err)
+
+	// Delete elements.
+	err = doc.DeleteElementAt("/obj/d/x")
+	assert.NoError(err)
+	node := doc.NodeAt("/obj/d/x")
+	assert.ErrorContains(node.Err(), "invalid path")
+	err = doc.DeleteElementAt("/obj/d")
+	assert.NoError(err)
+	node = doc.NodeAt("/obj/d/y")
+	assert.ErrorContains(node.Err(), "invalid path")
+	err = doc.DeleteElementAt("/obj")
+	assert.NoError(err)
+	node = doc.NodeAt("/obj")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	err = doc.DeleteElementAt("/arr")
+	assert.NoError(err)
+	node = doc.NodeAt("/arr")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	err = doc.DeleteElementAt("/val")
+	assert.NoError(err)
+	node = doc.NodeAt("/val")
+	assert.ErrorContains(node.Err(), "invalid path")
+
+	// Provoke errors.
+	err = doc.SetValueAt("/obj/a", 1)
+	assert.NoError(err)
+	err = doc.DeleteElementAt("/obj/a/not_found")
+	assert.ErrorContains(err, "path too long")
+
+	err = doc.DeleteElementAt("/deep/not_found")
+	assert.ErrorContains(err, "invalid path")
 }
 
 // TestParseError tests the returned error in case of
